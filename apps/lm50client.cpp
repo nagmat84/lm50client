@@ -310,7 +310,7 @@ int main( int argCount, char* argVals[] ) {
 		case ProgramOptions::FULL:
 			return modeFull();
 		case ProgramOptions::CACTI:
-			return modeFull();
+			return modeCacti();
 		default:
 			std::cerr << "Unknown fatal error" << std::endl;
 			return -1;
