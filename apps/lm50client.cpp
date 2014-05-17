@@ -2,77 +2,14 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
-#include <boost/program_options.hpp>
 #include "lib/modbus.h"
-#include <lib/mb_ascii.h>
+#include "lib/mb_ascii.h"
+#include "core/program_options.h"
+#include "core/lm50device.h"
 
+using namespace LM50;
 
-static boost::program_options::variables_map cmdLineOptions;
-
-
-static const uint16_t lm50addressVersion( 0x0578 );
-static const uint16_t lm50addressSerial( 0x2710 );
-static const uint16_t lm50addressMeter[50] = {
-	0x0080, 0x0082, 0x0084, 0x0086, 0x0088, 0x008a, 0x008c, 0x008e,
-	0x0090, 0x0092, 0x0094, 0x0096, 0x0098, 0x009a, 0x009c, 0x009e,
-	0x00a0, 0x00a2, 0x00a4, 0x00a6, 0x00a8, 0x00aa, 0x00ac, 0x00ae,
-	0x00b0, 0x00b2, 0x00b4, 0x00b6, 0x00b8, 0x00ba, 0x00bc, 0x00be,
-	0x00c0, 0x00c2, 0x00c4, 0x00c6, 0x00c8, 0x00ca, 0x00cc, 0x00ce,
-	0x00d0, 0x00d2, 0x00d4, 0x00d6, 0x00d8, 0x00da, 0x00dc, 0x00de,
-	0x00e0, 0x00e2
-};
-
-
-/**
- * @throws std::exception& If any parser error occurs or if some mandatory
- * argument is missing
- * @return True, if "--help" was specified as an argument. In this case the
- * parseOptions( int, char*[] ) prints the help message. The caller is supposed
- * to termintate program execution or do whatever the caller thinks is
- * appropriate. In all other cases the return value is false.
- */
-bool parseOptions( int argCount, char* argVals[] ) {
-	boost::program_options::options_description podesc( "Allowed options" );
-	
-	try {
-		podesc.add_options()
-		( "help", "Prints this help message." )
-		( "host,h", boost::program_options::value< std::string >(), "The DNS name of the LM50TCP+ to connect to." )
-		( "port,p", boost::program_options::value< std::string >()->default_value( std::string( "502") ), "The port on that the LM50TCP+ listens (default 502). The port can either be given as an integer or as a well-known servive name. E.g. \"http\" is identical to \"80\"." )
-		( "full,f", "Receives all available data from the LM50TCP+ and prints it in a nice human readable layout." )
-		( "cacti,c", boost::program_options::value< std::vector<unsigned int> >()->multitoken(), "The argument are one or more numeric values between 1 and 50 seperated by white spaces. As an alternative the option can specified several times. Each number specifies a meter input whose value is received and printed in a format that is suitable for Cacti. The list of numbers is sorted increasingly and multiple equal numbers are only processed once. E.g. \"-cacti 6 11 9 6\" is processed as \"-cacti 6 9 11\"." );
-	
-		boost::program_options::store( boost::program_options::command_line_parser( argCount, argVals ).options( podesc ).run(), cmdLineOptions );
-		boost::program_options::notify( cmdLineOptions );
-		
-		if( cmdLineOptions.count( "help" ) ) {
-			std::cerr << podesc << std::endl;
-			return true;
-		}
-		
-		if( cmdLineOptions.count( "host" ) != 1 ) throw std::logic_error( "The host name to connect to must be specified" );
-		if( cmdLineOptions.count( "port" ) != 1 ) throw std::logic_error( "The host name to connect to must be specified" );
-		
-		// Either "--full" must be specified or "--catci"
-		if( cmdLineOptions.count( "full" ) > 0 && cmdLineOptions.count( "cacti" ) > 0 ) throw std::invalid_argument( "Options \"full\" and \"cacti\" cannot be specified both at the same time" );
-		
-		if( cmdLineOptions.count( "full" ) == 0 && cmdLineOptions.count( "cacti" ) == 0 ) throw std::invalid_argument( "Either option \"full\" or \"cacti\" must be specified" );
-		
-		// If cacti is specified, check that all numbers are between 1 and 50
-		if( ! cmdLineOptions[ "cacti" ].empty() ) {
-			const std::vector< unsigned int >& meterNos( cmdLineOptions[ "cacti" ].as< std::vector< unsigned int > >() );
-			for( std::vector< unsigned int >::const_iterator it = meterNos.begin(); it != meterNos.end(); it++ ) {
-				unsigned int meterNo( *it );
-				if( 1 > meterNo || meterNo > 50 ) throw std::domain_error( "The meter input number must be between 1 and 50" );
-			}
-		}
-		
-		return false;
-	} catch( ... ) {
-		std::cerr << podesc << std::endl;
-		throw;
-	}
-}
+static ProgramOptions cmdLineOptions;
 
 
 /**
@@ -83,7 +20,7 @@ bool parseOptions( int argCount, char* argVals[] ) {
  */
 int modeFull() throw() {
 	try {
-		ModBus::TcpCommunication comm( cmdLineOptions[ "host" ].as< std::string >(), cmdLineOptions[ "port" ].as< std::string >() );
+		ModBus::TcpCommunication comm( cmdLineOptions.host(), cmdLineOptions.port() );
 		
 		std::cout << "===  LM-50TCP+ === " << std::endl << std::endl;
 		
@@ -91,12 +28,12 @@ int modeFull() throw() {
 		// at most 6 bytes (i.e. at most 5 letters and a trailing EOS).
 		// The ASCII characters are located at the the 16-bit registers
 		// 0x0578, 0x0579 and 0x057a
-		ModBus::Datagram::ReadHoldingRegistersReq reqVersion( 1, 1, lm50addressVersion, 3 );
+		ModBus::Datagram::ReadHoldingRegistersReq reqVersion( 1, 1, LM50Device::hwAddrVersion, 3 );
 		ModBus::TcpRequestAndReply rarVersion( comm.createRequestAndReply( reqVersion ) );
 		
 		// Read serial number of the LM-50TCP+. This is a 32-bit unsigned integer
 		// and is located at the 16-bit registers 0x2710 and 0x2711.
-		ModBus::Datagram::ReadHoldingRegistersReq reqSerial( 1, 1, lm50addressSerial, 2 );
+		ModBus::Datagram::ReadHoldingRegistersReq reqSerial( 1, 1, LM50Device::hwAddrSerial, 2 );
 		ModBus::TcpRequestAndReply rarSerial( comm.createRequestAndReply( reqSerial ) );
 		
 		// Try to obtain replies and print them
@@ -142,7 +79,7 @@ int modeFull() throw() {
 		// The 50th value (32-bit)  is located at 0x00e2 and 0x00e3
 		// This means starting with adress 0x0080 there are 100 1-bit registers to
 		// read
-		ModBus::Datagram::ReadInputRegistersReq reqMeters( 1, 1, lm50addressMeter[0], 100 );
+		ModBus::Datagram::ReadInputRegistersReq reqMeters( 1, 1, LM50Device::hwAddrChannel(1), 100 );
 		ModBus::TcpRequestAndReply rarMeters( comm.createRequestAndReply( reqMeters ) );
 		
 		std::cout << "Reading meter inputs ... " << std::flush;
@@ -202,14 +139,7 @@ int modeCacti() throw() {
 	int lastError( 0 );
 	
 	try {
-		// Sort the input registers and removes duplicates
-		std::vector< unsigned int > metersNos( cmdLineOptions[ "cacti" ].as< std::vector< unsigned int > >() );
-		std::sort< std::vector< unsigned int >::iterator >( metersNos.begin(), metersNos.end() );
-		std::vector< unsigned int >::iterator it( std::unique< std::vector< unsigned int >::iterator >( metersNos.begin(), metersNos.end() ) );
-		metersNos.resize( it - metersNos.begin() );
-		assert( !metersNos.empty() );
-		
-		ModBus::TcpCommunication comm( cmdLineOptions[ "host" ].as< std::string >(), cmdLineOptions[ "port" ].as< std::string >() );
+		ModBus::TcpCommunication comm( cmdLineOptions.host(), cmdLineOptions.port() );
 		
 		// Cacti threats single value output and multi value output differently.
 		// If only one value is expected, only that value must be printed.
@@ -228,11 +158,11 @@ int modeCacti() throw() {
 		// If there are more spaces in between or trailing spaces at the end
 		// the string is split in a false way.
 		
-		if( metersNos.size() == 1 ) {
-			unsigned int meterNo( metersNos.front() );
+		if( cmdLineOptions.channels().size() == 1 ) {
+			unsigned int meterNo( cmdLineOptions.channels().front() );
 			
 			assert( 1 <= meterNo && meterNo <= 50 );
-			ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, lm50addressMeter[ meterNo-1 ], 2 );
+			ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, LM50Device::hwAddrChannel( meterNo ), 2 );
 			ModBus::TcpRequestAndReply rarMeter( comm.createRequestAndReply( reqMeter ) );
 			
 			rarMeter.run();
@@ -259,13 +189,14 @@ int modeCacti() throw() {
 			std::cout << cactiOutput.str() << std::flush;
 		} else {
 			unsigned int meterNo = 0;
-
+			
+			ProgramOptions::ChList::const_iterator it;
 			try {
-				it = metersNos.begin();
+				it = cmdLineOptions.channels().begin();
 				meterNo = *it;
 				
 				assert( 1 <= meterNo && meterNo <= 50 );
-				ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, lm50addressMeter[ meterNo-1 ], 2 );
+				ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, LM50Device::hwAddrChannel( meterNo ), 2 );
 				ModBus::TcpRequestAndReply rarMeter( comm.createRequestAndReply( reqMeter ) );
 				
 				rarMeter.run();
@@ -300,11 +231,11 @@ int modeCacti() throw() {
 				lastError = -1;
 			}
 			
-			for( ++it; it != metersNos.end(); it++ ) {
+			for( ++it; it != cmdLineOptions.channels().end(); it++ ) {
 				try {
 					meterNo = *it;
 					assert( 1 <= meterNo && meterNo <= 50 );
-					ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, lm50addressMeter[ meterNo-1 ], 2 );
+					ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, LM50Device::hwAddrChannel( meterNo ), 2 );
 					ModBus::TcpRequestAndReply rarMeter( comm.createRequestAndReply( reqMeter ) );
 					
 					rarMeter.run();
@@ -360,7 +291,7 @@ int main( int argCount, char* argVals[] ) {
 		std::cerr.imbue( loc );
 		std::clog.imbue( loc );
 		std::cin.imbue( loc );
-		if( parseOptions( argCount, argVals ) ) return 0;
+		cmdLineOptions.parse( argCount, argVals );
 	} catch( std::exception& e ) {
 		std::cerr << "Error:  " << e.what() << std::endl;
 		return -1;
@@ -370,10 +301,19 @@ int main( int argCount, char* argVals[] ) {
 		return -1;
 	}
 	
-	if( cmdLineOptions.count( "full" ) > 0 ) {
-		return modeFull();
-	} else {
-		return modeCacti();
+	if ( cmdLineOptions.hasOptionHelp() ) {
+		cmdLineOptions.print( std::cout );
+		return 0;
+	}
+	
+	switch( cmdLineOptions.operationMode() ) {
+		case ProgramOptions::FULL:
+			return modeFull();
+		case ProgramOptions::CACTI:
+			return modeFull();
+		default:
+			std::cerr << "Unknown fatal error" << std::endl;
+			return -1;
 	}
 	
 	return 0;

@@ -25,4 +25,6 @@ add_subdirectory( apps )
 
 add_subdirectory( tests )
 
+add_subdirectory( core EXCLUDE_FROM_ALL )
+
 add_subdirectory( lib EXCLUDE_FROM_ALL )
