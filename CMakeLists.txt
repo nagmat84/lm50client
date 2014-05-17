@@ -14,7 +14,7 @@ message( "Boost include dir is ${Boost_INCLUDE_DIRS}" )
 message( "Boost library dir is ${Boost_LIBRARIES}" )
 
 IF( NOT CMAKE_BUILD_TYPE )
-  SET( CMAKE_BUILD_TYPE "Release" )
+  SET( CMAKE_BUILD_TYPE "Debug" )
 ENDIF()
 
 SET( CMAKE_CXX_FLAGS "-pedantic -Wextra -Wall -Wno-c++0x-compat" )

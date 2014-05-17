@@ -18,7 +18,7 @@ ProgramOptions::ProgramOptions() : \
 		( "full,f", "Operation mode \"full\": Writes results to standard output in a nice human readable layout." )
 		( "cacti,c", "Operation mode \"cacti\": Write results to standard output such that they can be parsed by cacti." )
 		( "daemon,d", "Operation mode \"deamon\": Forks into background and polls the LM50TCP+ periodically." )
-		( "channels,C", boost::program_options::value< std::vector<unsigned int> >()->multitoken(), "Specifies the channels whose values are polled and processed. Multiple channel numbers must be seperated by white spaces. If the option is specified more than once, the lists of channels are joined. The channels are sorted increasingly and duplicates are skipped. E.g. \"-C 6 11 9 6 -C 11\" is equivalent to \"-C 6 9 11\". If no channels are given, all available channels are polled." );
+		( "channels,C", boost::program_options::value< ChList >()->multitoken(), "Specifies the channels whose values are polled and processed. Multiple channel numbers must be seperated by white spaces. If the option is specified more than once, the lists of channels are joined. The channels are sorted increasingly and duplicates are skipped. E.g. \"-C 6 11 9 6 -C 11\" is equivalent to \"-C 6 9 11\". If no channels are given, all available channels are polled." );
 }
 
 /**
