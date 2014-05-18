@@ -44,7 +44,7 @@ class ErrorRes : public Base {
 		
 	public:
 		
-		virtual Base* copy() const {
+		virtual ErrorRes* copy() const {
 			return new ErrorRes( *this );
 		}
 		

@@ -45,7 +45,7 @@ class ReadInputRegistersReq : public Base {
 		
 	public:
 		
-		virtual Base* copy() const {
+		virtual ReadInputRegistersReq* copy() const {
 			return new ReadInputRegistersReq( *this );
 		}
 		

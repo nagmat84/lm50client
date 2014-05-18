@@ -56,9 +56,9 @@ class LM50Device {
 		const boost::posix_time::ptime& lastUpdate() const { return _lastUpdate; }
 		
 	protected:
-		const ModBus::Datagram::Base* readValue( const ModBus::Datagram::Base& req );
-		const ModBus::Datagram::ReadHoldingRegistersRes* readHValue( HwAddr addr, HwLength length );
-		const ModBus::Datagram::ReadInputRegistersRes* readIValue( HwAddr addr, HwLength length );
+		ModBus::Datagram::Base* readValue( const ModBus::Datagram::Base& req );
+		ModBus::Datagram::ReadHoldingRegistersRes* readHValue( HwAddr addr, HwLength length );
+		ModBus::Datagram::ReadInputRegistersRes* readIValue( HwAddr addr, HwLength length );
 		
 	public:
 		static const ChIdx firstChannel;

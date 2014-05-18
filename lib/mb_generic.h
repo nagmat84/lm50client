@@ -46,7 +46,7 @@ class Generic : public Base {
 		
 	public:
 		
-		virtual Base* copy() const {
+		virtual Generic* copy() const {
 			return new Generic( *this );
 		}
 		

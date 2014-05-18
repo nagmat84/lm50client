@@ -45,7 +45,7 @@ class ReadHoldingRegistersReq : public Base {
 		
 	public:
 		
-		virtual Base* copy() const {
+		virtual ReadHoldingRegistersReq* copy() const {
 			return new ReadHoldingRegistersReq( *this );
 		}
 		

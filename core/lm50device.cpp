@@ -47,7 +47,7 @@ LM50Device::LM50Device( const std::string& h, const std::string& p ) : \
 	for( ChIdx i( firstChannel ); i <= lastChannel; ++i ) _channels[ i-firstChannel ] = 0;
 }
 
-const Datagram::Base* LM50Device::readValue( const Datagram::Base& req ) {
+Datagram::Base* LM50Device::readValue( const Datagram::Base& req ) {
 	TcpRequestAndReply rar( _tcpComm.createRequestAndReply( req ) );
 	rar.run();
 	const Datagram::Base* res = rar.response();
@@ -57,30 +57,42 @@ const Datagram::Base* LM50Device::readValue( const Datagram::Base& req ) {
 		_lastReplyId = err->transactionID();
 		throw runtime_error( string( "ModBus error: " ).append( err->exceptionMessage() ) );
 	}
-	return res;
+	return rar.releaseResponse();
 }
 
-const Datagram::ReadHoldingRegistersRes* LM50Device::readHValue( HwAddr addr, HwLength length ) {
+Datagram::ReadHoldingRegistersRes* LM50Device::readHValue( HwAddr addr, HwLength length ) {
 	Datagram::ReadHoldingRegistersReq req( ++_lastRequestId, _unitId, addr, length );
 	// The return value of the next function call is not NULL and not an error
 	// datagram, otherwise an exception had been thrown
-	const Datagram::Base* res = readValue( req );
-	const Datagram::ReadHoldingRegistersRes* hres = dynamic_cast< const Datagram::ReadHoldingRegistersRes* >( res );
-	if( !hres ) throw runtime_error( "ModBus error: Unexepected datagram format" );
+	Datagram::Base* res = readValue( req );
+	Datagram::ReadHoldingRegistersRes* hres = dynamic_cast< Datagram::ReadHoldingRegistersRes* >( res );
+	if( !hres ) {
+		delete res;
+		throw runtime_error( "ModBus error: Unexepected datagram format" );
+	}
 	_lastReplyId = hres->transactionID();
-	if( _lastReplyId != _lastRequestId ) throw runtime_error( "ModBus error: Received a response datagram, but it does not belong to our conversation" );
+	if( _lastReplyId != _lastRequestId ) {
+		delete hres;
+		throw runtime_error( "ModBus error: Received a response datagram, but it does not belong to our conversation" );
+	}
 	return hres;
 }
 
-const Datagram::ReadInputRegistersRes* LM50Device::readIValue( HwAddr addr, HwLength length ) {
+Datagram::ReadInputRegistersRes* LM50Device::readIValue( HwAddr addr, HwLength length ) {
 	Datagram::ReadInputRegistersReq req( ++_lastRequestId, _unitId, addr, length );
 	// The return value of the next function call is not NULL and not an error
 	// datagram, otherwise an exception had been thrown
-	const Datagram::Base* res = readValue( req );
-	const Datagram::ReadInputRegistersRes* ires = dynamic_cast< const Datagram::ReadInputRegistersRes* >( res );
-	if( !ires ) throw runtime_error( "ModBus error: Unexepected datagram format" );
+	Datagram::Base* res = readValue( req );
+	Datagram::ReadInputRegistersRes* ires = dynamic_cast< Datagram::ReadInputRegistersRes* >( res );
+	if( !ires ) {
+		delete res;
+		throw runtime_error( "ModBus error: Unexepected datagram format" );
+	}
 	_lastReplyId = ires->transactionID();
-	if( _lastReplyId != _lastRequestId ) throw runtime_error( "ModBus error: Received a response datagram, but it does not belong to our conversation" );
+	if( _lastReplyId != _lastRequestId ) {
+		delete ires;
+		throw runtime_error( "ModBus error: Received a response datagram, but it does not belong to our conversation" );
+	}
 	return ires;
 }
 
@@ -90,15 +102,17 @@ void LM50Device::readSteadyValues() {
 	// at most 6 bytes (i.e. at most 5 letters and a trailing EOS).
 	// The ASCII characters are located at the the three 16-bit registers
 	// hwAddrRevision, hwAddrRevision+1 and hwAddrRevision+2
-	const Datagram::ReadHoldingRegistersRes* hres = readHValue( hwAddrRevision, 3  );
+	Datagram::ReadHoldingRegistersRes* hres = readHValue( hwAddrRevision, 3  );
 	Interpreter::ASCII< Datagram::ReadHoldingRegistersRes > ascii( *hres );
 	_revision = ascii.string();
+	delete hres;
 	
 	// Read serial number of the LM-50TCP+. This is a 32-bit unsigned integer
 	// and is located at the two 16-bit registers hwAddrSerialNo and hwAddrSerialNo+1.
 	hres = readHValue( hwAddrSerialNo, 2  );
 	Interpreter::UInt32< Datagram::ReadHoldingRegistersRes > serial( *hres );
 	_serialNo = serial.value( 0 );
+	delete hres;
 }
 
 void LM50Device::updateVolatileValues() {
@@ -107,10 +121,14 @@ void LM50Device::updateVolatileValues() {
 	// The 50th value (32-bit)  is located at 0x00e2 and 0x00e3
 	// This means starting with adress 0x0080 there are 100 16-bit registers to
 	// read
-	const Datagram::ReadInputRegistersRes* ires = readIValue( _hwAddrChannel[0], 2*(lastChannel - firstChannel + 1)  );
+	Datagram::ReadInputRegistersRes* ires = readIValue( _hwAddrChannel[0], 2*(lastChannel - firstChannel + 1)  );
 	Interpreter::UInt32< Datagram::ReadInputRegistersRes > chs( *ires );
-	if( chs.size() != lastChannel - firstChannel + 1 ) throw runtime_error( "ModBus error: Received a truncated response datagram" );
+	if( chs.size() != lastChannel - firstChannel + 1 ) {
+		delete ires;
+		throw runtime_error( "ModBus error: Received a truncated response datagram" );
+	}
 	for( ChIdx j = 0; j < chs.size(); j++ ) _channels[j] = chs.value(j);
+	delete ires;
 }
 
 const string& LM50Device::revision() const {

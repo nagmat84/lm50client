@@ -1,9 +1,10 @@
 #ifndef _mb_tcprar_h_
 #define _mb_tcprar_h_
 
+#include <boost/asio.hpp>
 
 #include "mb_base.h"
-#include <boost/asio.hpp>
+#include "nullptr.h"
 
 
 namespace ModBus {
@@ -69,6 +70,18 @@ class TcpRequestAndReply {
 		 */
 		const Datagram::Base* response() const {
 			return responseDgram;
+		}
+		
+		/**
+		 * @return The response for the request. If TcpRequestAndReply::run()
+		 * has never been invoked or was unsuccessful, NULL is returned
+		 * The caller is responsible to free the returned object, because
+		 * this object gives up the owner ship.
+		 */
+		Datagram::Base* releaseResponse() {
+			Datagram::Base* tmp( responseDgram );
+			responseDgram = nullptr;
+			return tmp;
 		}
 		
 	protected:
