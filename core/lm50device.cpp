@@ -129,6 +129,7 @@ void LM50Device::updateVolatileValues() {
 	}
 	for( ChIdx j = 0; j < chs.size(); j++ ) _channels[j] = chs.value(j);
 	delete ires;
+	_lastUpdate = boost::posix_time::microsec_clock::universal_time();
 }
 
 const string& LM50Device::revision() const {
