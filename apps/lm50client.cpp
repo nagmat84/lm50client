@@ -67,11 +67,11 @@ int modeCacti() throw() {
 	cactiOutput.imbue( std::locale( "C" ) );
 	cactiOutput.fill( '0' );
 	
-	
-	int lastError( 0 );
-	
 	try {
-		ModBus::TcpCommunication comm( cmdLineOptions.host(), cmdLineOptions.port() );
+		LM50Device dev( cmdLineOptions.host(), cmdLineOptions.port() );
+		dev.connect();
+		dev.updateVolatileValues();
+		dev.disconnect();
 		
 		// Cacti threats single value output and multi value output differently.
 		// If only one value is expected, only that value must be printed.
@@ -91,126 +91,29 @@ int modeCacti() throw() {
 		// the string is split in a false way.
 		
 		if( cmdLineOptions.channels().size() == 1 ) {
-			unsigned int meterNo( cmdLineOptions.channels().front() );
-			
-			assert( 1 <= meterNo && meterNo <= 50 );
-			ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, LM50Device::hwAddrChannel( meterNo ), 2 );
-			ModBus::TcpRequestAndReply rarMeter( comm.createRequestAndReply( reqMeter ) );
-			
-			rarMeter.run();
-			const ModBus::Datagram::Base* resBase = rarMeter.response();
-			const ModBus::Datagram::ErrorRes* resError = dynamic_cast< const ModBus::Datagram::ErrorRes* >( resBase );
-			const ModBus::Datagram::ReadInputRegistersRes* resIRegister = dynamic_cast< const ModBus::Datagram::ReadInputRegistersRes* >( resBase );
-			
-			if( resBase == nullptr ) {
-				// timeout
-				lastError = -1;
-			} else {
-				if( resIRegister ) {
-					ModBus::Interpreter::UInt32< ModBus::Datagram::ReadInputRegistersRes > meterVal( *resIRegister );
-					assert( meterVal.size() == 1 );
-					cactiOutput << meterVal.value( 0 );
-				} else if( resError ) {
-					// modbus error
-					lastError = resError->exceptionCode();
-				} else {
-					// unexpected error
-					lastError = -1;
-				}
-			}
-			std::cout << cactiOutput.str() << std::flush;
+			cactiOutput << dev.channel( cmdLineOptions.channels().front() );
 		} else {
-			unsigned int meterNo = 0;
-			
-			ProgramOptions::ChList::const_iterator it;
-			try {
-				it = cmdLineOptions.channels().begin();
-				meterNo = *it;
-				
-				assert( 1 <= meterNo && meterNo <= 50 );
-				ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, LM50Device::hwAddrChannel( meterNo ), 2 );
-				ModBus::TcpRequestAndReply rarMeter( comm.createRequestAndReply( reqMeter ) );
-				
-				rarMeter.run();
-				const ModBus::Datagram::Base* resBase = rarMeter.response();
-				const ModBus::Datagram::ErrorRes* resError = dynamic_cast< const ModBus::Datagram::ErrorRes* >( resBase );
-				const ModBus::Datagram::ReadInputRegistersRes* resIRegister = dynamic_cast< const ModBus::Datagram::ReadInputRegistersRes* >( resBase );
-				
-				if( resBase == nullptr ) {
-					// timeout
-					cactiOutput << "meter" << std::setw( 2 ) << meterNo << ":nan";
-					lastError = -1;
-				} else {
-					if( resIRegister ) {
-						ModBus::Interpreter::UInt32< ModBus::Datagram::ReadInputRegistersRes > meterVal( *resIRegister );
-						assert( meterVal.size() == 1 );
-						cactiOutput << "meter" << std::setw( 2 ) << meterNo << ':' << meterVal.value( 0 );
-					} else if( resError ) {
-						// modbus error
-						cactiOutput << "meter" << std::setw( 2 ) << meterNo << ":nan";
-						lastError = resError->exceptionCode();
-					} else {
-						// unexpected error
-						cactiOutput << "meter" << std::setw( 2 ) << meterNo << ":nan";
-						lastError = -1;
-					}
-				}
-			} catch( boost::system::error_code& e ) {
-				cactiOutput << "meter" << std::setw( 2 ) << meterNo << ":nan";
-				lastError = e.value();
-			} catch( ... ) {
-				cactiOutput << "meter" << std::setw( 2 ) << meterNo << ":nan";
-				lastError = -1;
-			}
-			
+			ProgramOptions::ChList::const_iterator it( cmdLineOptions.channels().begin() );
+			cactiOutput << "meter" << std::setw( 2 ) << (*it) << ':' << dev.channel( *it );
 			for( ++it; it != cmdLineOptions.channels().end(); it++ ) {
-				try {
-					meterNo = *it;
-					assert( 1 <= meterNo && meterNo <= 50 );
-					ModBus::Datagram::ReadInputRegistersReq reqMeter( 1, 1, LM50Device::hwAddrChannel( meterNo ), 2 );
-					ModBus::TcpRequestAndReply rarMeter( comm.createRequestAndReply( reqMeter ) );
-					
-					rarMeter.run();
-					const ModBus::Datagram::Base* resBase = rarMeter.response();
-					const ModBus::Datagram::ErrorRes* resError = dynamic_cast< const ModBus::Datagram::ErrorRes* >( resBase );
-					const ModBus::Datagram::ReadInputRegistersRes* resIRegister = dynamic_cast< const ModBus::Datagram::ReadInputRegistersRes* >( resBase );
-					
-					if( resBase == nullptr ) {
-						// timeout
-						cactiOutput << " meter" << std::setw( 2 ) << meterNo << ":nan";
-						lastError = -1;
-					} else {
-						if( resIRegister ) {
-							ModBus::Interpreter::UInt32< ModBus::Datagram::ReadInputRegistersRes > meterVal( *resIRegister );
-							assert( meterVal.size() == 1 );
-							cactiOutput<< " meter" << std::setw( 2 ) << meterNo << ':' << meterVal.value( 0 );
-						} else if( resError ) {
-							// modbus error
-							cactiOutput << " meter" << std::setw( 2 ) << meterNo << ":nan";
-							lastError = resError->exceptionCode();
-						} else {
-							// unexpected error
-							cactiOutput << " meter" << std::setw( 2 ) << meterNo << ":nan";
-							lastError = -1;
-						}
-					}
-				} catch( boost::system::error_code& e ) {
-					cactiOutput << " meter" << std::setw( 2 ) << meterNo << ":nan";
-					lastError = e.value();
-				} catch( ... ) {
-					cactiOutput << " meter" << std::setw( 2 ) << meterNo << ":nan";
-					lastError = -1;
-				}
+				cactiOutput<< " meter" << std::setw( 2 ) << (*it) << ':' << dev.channel( *it );
 			}
-			std::cout << cactiOutput.str() << std::flush;
 		}
-	} catch ( boost::system::error_code& e ) {
-		return e.value();
+		std::cout << cactiOutput.str() << std::endl;
 	} catch ( ... ) {
+		if( cmdLineOptions.channels().size() == 1 ) {
+			cactiOutput << "nan";
+		} else {
+			ProgramOptions::ChList::const_iterator it( cmdLineOptions.channels().begin() );
+			cactiOutput << "meter" << std::setw( 2 ) << (*it) << ":nan";
+			for( ++it; it != cmdLineOptions.channels().end(); it++ ) {
+				cactiOutput<< " meter" << std::setw( 2 ) << (*it) << ":nan";
+			}
+		}
+		std::cout << cactiOutput.str() << std::endl;
 		return -1;
 	}
-	
-	return lastError;
+	return 0;
 }
 
 
