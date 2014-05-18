@@ -2,8 +2,6 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
-#include "lib/modbus.h"
-#include "lib/mb_ascii.h"
 #include "core/program_options.h"
 #include "core/lm50device.h"
 
@@ -20,91 +18,25 @@ static ProgramOptions cmdLineOptions;
  */
 int modeFull() throw() {
 	try {
-		ModBus::TcpCommunication comm( cmdLineOptions.host(), cmdLineOptions.port() );
-		
 		std::cout << "===  LM-50TCP+ === " << std::endl << std::endl;
+		std::cout << "Host    :  " << cmdLineOptions.host() << std::endl;
+		std::cout << "Port    :  " << cmdLineOptions.port() << std::endl;
 		
-		// Read version information of the LM-50TCP+. This is a ASCII string with
-		// at most 6 bytes (i.e. at most 5 letters and a trailing EOS).
-		// The ASCII characters are located at the the 16-bit registers
-		// 0x0578, 0x0579 and 0x057a
-		ModBus::Datagram::ReadHoldingRegistersReq reqVersion( 1, 1, LM50Device::hwAddrVersion, 3 );
-		ModBus::TcpRequestAndReply rarVersion( comm.createRequestAndReply( reqVersion ) );
+		LM50Device dev( cmdLineOptions.host(), cmdLineOptions.port() );
+		dev.connect();
 		
-		// Read serial number of the LM-50TCP+. This is a 32-bit unsigned integer
-		// and is located at the 16-bit registers 0x2710 and 0x2711.
-		ModBus::Datagram::ReadHoldingRegistersReq reqSerial( 1, 1, LM50Device::hwAddrSerial, 2 );
-		ModBus::TcpRequestAndReply rarSerial( comm.createRequestAndReply( reqSerial ) );
+		dev.readSteadyValues();
+		std::cout << "Version :  " << dev.revision() << std::endl;
+		std::cout << "Serial  :  " << dev.serialNumber() << std::endl;
 		
-		// Try to obtain replies and print them
-		std::cout << "Version :  ";
-		rarVersion.run();
-		const ModBus::Datagram::Base* resBase = rarVersion.response();
-		const ModBus::Datagram::ErrorRes* resError = dynamic_cast< const ModBus::Datagram::ErrorRes* >( resBase );
-		const ModBus::Datagram::ReadHoldingRegistersRes* resRegister = dynamic_cast< const ModBus::Datagram::ReadHoldingRegistersRes* >( resBase );
-		if( resBase == nullptr ) {
-			std::cout << "Time out" << std::endl;
-		} else {
-			if( resRegister ) {
-				ModBus::Interpreter::ASCII< ModBus::Datagram::ReadHoldingRegistersRes > version( *resRegister );
-				std::cout << version.string() << std::endl;
-			} else if( resError ) {
-				std::cout << "ModBus error  -  " << resError->exceptionMessage() << std::endl;
-			} else {
-				std::cout << "Unexpected return value" << std::endl;
-			}
+		std::cout << "Reading channels ... " << std::flush;
+		dev.updateVolatileValues();
+		std::cout << "done" << std::endl;
+		for( LM50Device::ChIdx j = LM50Device::firstChannel; j <= LM50Device::lastChannel; j++ ) {
+			std::cout << "Channel " << std::setw( 2 ) << j << ":   " << std::setw(12) << dev.channel(j) << std::endl;
 		}
 		
-		std::cout << "Serial  :  ";
-		rarSerial.run();
-		resBase = rarSerial.response();
-		resError = dynamic_cast< const ModBus::Datagram::ErrorRes* >( resBase );
-		resRegister = dynamic_cast< const ModBus::Datagram::ReadHoldingRegistersRes* >( resBase );
-		if( resBase == nullptr ) {
-			std::cout << "Time out" << std::endl;
-		} else {
-			if( resRegister ) {
-				ModBus::Interpreter::UInt32< ModBus::Datagram::ReadHoldingRegistersRes > serial( *resRegister );
-				std::cout << serial.value( 0 ) << std::endl;
-			} else if( resError ) {
-				std::cout << "ModBus error  -  " << resError->exceptionMessage() << std::endl;
-			} else {
-				std::cout << "Unexpected return value" << std::endl;
-			}
-		}
-		
-		
-		// Now read all meter values
-		// The first value (32-bit) is located at 0x0080 and 0x0081
-		// The 50th value (32-bit)  is located at 0x00e2 and 0x00e3
-		// This means starting with adress 0x0080 there are 100 1-bit registers to
-		// read
-		ModBus::Datagram::ReadInputRegistersReq reqMeters( 1, 1, LM50Device::hwAddrChannel(1), 100 );
-		ModBus::TcpRequestAndReply rarMeters( comm.createRequestAndReply( reqMeters ) );
-		
-		std::cout << "Reading meter inputs ... " << std::flush;
-		rarMeters.run();
-		resBase = rarMeters.response();
-		resError = dynamic_cast< const ModBus::Datagram::ErrorRes* >( resBase );
-		const ModBus::Datagram::ReadInputRegistersRes* resIRegister = dynamic_cast< const ModBus::Datagram::ReadInputRegistersRes* >( resBase );
-		
-		if( resBase == nullptr ) {
-			std::cout << "Time out" << std::endl;
-		} else {
-			if( resIRegister ) {
-				std::cout << "done" << std::endl;
-				ModBus::Interpreter::UInt32< ModBus::Datagram::ReadInputRegistersRes > meters( *resIRegister );
-				for( size_t j = 0; j < meters.size(); j++ ) {
-					std::cout << "Meter " << std::setw( 2 ) << (j+1) << ":   " << std::setw(12) << meters.value( j ) << std::endl;
-				}
-			} else if( resError ) {
-				std::cout << "ModBus error  -  " << resError->exceptionMessage() << std::endl;
-			} else {
-				std::cout << "Unexpected return value" << std::endl;
-			}
-		}
-		
-		
+		dev.disconnect();
 	} catch ( std::exception& e ) {
 		std::cerr << "Error: " << e.what() << std::endl;
 		return -1;

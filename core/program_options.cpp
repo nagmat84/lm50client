@@ -7,9 +7,9 @@ ProgramOptions::ProgramOptions() : \
 	_boostOptDesc( "Allowed options" ),\
 	_boostVMap(),\
 	_operationMode( UNKNOWN ),\
-	_hasOptionHelp( false ),
-	_host(),
-	_port(),
+	_hasOptionHelp( false ),\
+	_host(),\
+	_port(),\
 	_channels() {
 	_boostOptDesc.add_options()
 		( "help", "Prints this help message." )

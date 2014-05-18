@@ -1,6 +1,7 @@
 #ifndef _MODBUS_H_
 #define _MODBUS_H_
 
+#include "lib/mb_ascii.h"
 #include "lib/mb_errorres.h"
 #include "lib/mb_generic.h"
 #include "lib/mb_rhregreq.h"

@@ -58,7 +58,7 @@ class TcpRequestAndReply {
 		 * Tries to transmit the given request with the given socket. The socket
 		 * must be connected. If the socket does not exist, is not connected or
 		 * if the request is not valid, an appropriate exception is thrown.
-		 * The function block until either the response has arrived or the time
+		 * The function blocks until either the response has arrived or the time
 		 * out duration has expired.
 		 */
 		void run();
