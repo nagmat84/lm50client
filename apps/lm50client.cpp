@@ -32,8 +32,9 @@ int modeFull() throw() {
 		std::cout << "Reading channels ... " << std::flush;
 		dev.updateVolatileValues();
 		std::cout << "done" << std::endl;
-		for( LM50Device::ChIdx j = LM50Device::firstChannel; j <= LM50Device::lastChannel; j++ ) {
-			std::cout << "Channel " << std::setw( 2 ) << j << ":   " << std::setw(12) << dev.channel(j) << std::endl;
+		
+		for( ProgramOptions::ChList::const_iterator it( cmdLineOptions.channels().begin() ); it != cmdLineOptions.channels().end(); it++ ) {
+			std::cout << "Channel " << std::setw( 2 ) << (*it+1) << ":   " << std::setw(12) << dev.channel(*it) << std::endl;
 		}
 		
 		dev.disconnect();
@@ -94,9 +95,9 @@ int modeCacti() throw() {
 			cactiOutput << dev.channel( cmdLineOptions.channels().front() );
 		} else {
 			ProgramOptions::ChList::const_iterator it( cmdLineOptions.channels().begin() );
-			cactiOutput << "meter" << std::setw( 2 ) << (*it) << ':' << dev.channel( *it );
+			cactiOutput << "meter" << std::setw( 2 ) << (*it+1) << ':' << dev.channel( *it );
 			for( ++it; it != cmdLineOptions.channels().end(); it++ ) {
-				cactiOutput<< " meter" << std::setw( 2 ) << (*it) << ':' << dev.channel( *it );
+				cactiOutput<< " meter" << std::setw( 2 ) << (*it+1) << ':' << dev.channel( *it );
 			}
 		}
 		std::cout << cactiOutput.str() << std::endl;
@@ -105,9 +106,9 @@ int modeCacti() throw() {
 			cactiOutput << "nan";
 		} else {
 			ProgramOptions::ChList::const_iterator it( cmdLineOptions.channels().begin() );
-			cactiOutput << "meter" << std::setw( 2 ) << (*it) << ":nan";
+			cactiOutput << "meter" << std::setw( 2 ) << (*it+1) << ":nan";
 			for( ++it; it != cmdLineOptions.channels().end(); it++ ) {
-				cactiOutput<< " meter" << std::setw( 2 ) << (*it) << ":nan";
+				cactiOutput<< " meter" << std::setw( 2 ) << (*it+1) << ":nan";
 			}
 		}
 		std::cout << cactiOutput.str() << std::endl;

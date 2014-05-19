@@ -23,14 +23,9 @@ class LM50Device {
 	public:
 		LM50Device();
 		LM50Device( const std::string& h, const std::string& p );
-		virtual ~LM50Device() {}
+		virtual ~LM50Device() { delete[] _channels; }
 		
 	public:
-		static HwAddr hwAddrChannel( ChIdx ch ) {
-			assert( ch >= firstChannel && ch <= lastChannel );
-			return _hwAddrChannel[ch-firstChannel];
-		}
-		
 		const std::string& host() const { return _host; }
 		
 		void host( std::string h ) { _host = h; }
@@ -56,19 +51,26 @@ class LM50Device {
 		const boost::posix_time::ptime& lastUpdate() const { return _lastUpdate; }
 		
 	protected:
+		/*static HwAddr hwAddrChannel( ChIdx ch ) {
+			assert( ch >= firstChannel && ch <= lastChannel );
+			return _hwAddrChannel[ch-firstChannel];
+		}*/
 		ModBus::Datagram::Base* readValue( const ModBus::Datagram::Base& req );
 		ModBus::Datagram::ReadHoldingRegistersRes* readHValue( HwAddr addr, HwLength length );
 		ModBus::Datagram::ReadInputRegistersRes* readIValue( HwAddr addr, HwLength length );
 		
 	public:
-		static const ChIdx firstChannel;
-		static const ChIdx lastChannel;
-		static const HwAddr hwAddrRevision;
-		static const HwAddr hwAddrSerialNo;
+		//static const ChIdx firstChannel;
+		static const ChIdx countChannels;
 		
 	protected:
-		static const UnitId _unitId;
-		static const HwAddr _hwAddrChannel[ 50 ];
+		static const UnitId   _unitId;
+		static const HwAddr   _hwAddrRevision;
+		static const HwLength _hwLengthRevision;
+		static const HwAddr   _hwAddrSerialNo;
+		static const HwLength _hwLengthSerialNo;
+		static const HwAddr   _hwAddrChannels;
+		static const HwLength _hwLengthChannels;
 		std::string _host;
 		std::string _port;
 		boost::posix_time::ptime _lastUpdate;
@@ -77,7 +79,7 @@ class LM50Device {
 		TransactionId _lastReplyId;
 		std::string _revision;
 		unsigned int _serialNo;
-		unsigned int _channels[ 50 ];
+		unsigned int* _channels;
 };
 
 }

@@ -1,26 +1,41 @@
-#include "program_options.h"
+#include "lm50device.h"
 
 namespace LM50 {
-	
+
 using namespace boost::posix_time;
 using namespace ModBus;
 using namespace std;
 
-
+// Normally devices within the ModBus protocoll are addressed and identified
+// by the unit id. For example this is true for "real" ModBus on a RS-432 line.
+// For ModBus over TCP/IP the unit id has no meaning, because the device is
+// already identified by its IP address but nonetheless a unit id is required
+// to form a valid datagram. The LM50TCP+ requires the unit id to be 1.
 const LM50Device::UnitId LM50Device::_unitId(1);
-const LM50Device::ChIdx  LM50Device::firstChannel(1);
-const LM50Device::ChIdx  LM50Device::lastChannel(50);
-const LM50Device::HwAddr LM50Device::hwAddrRevision( 0x0578 );
-const LM50Device::HwAddr LM50Device::hwAddrSerialNo( 0x2710 );
-const LM50Device::HwAddr LM50Device::_hwAddrChannel[ LM50Device::lastChannel ] = {
-	0x0080, 0x0082, 0x0084, 0x0086, 0x0088, 0x008a, 0x008c, 0x008e,
-	0x0090, 0x0092, 0x0094, 0x0096, 0x0098, 0x009a, 0x009c, 0x009e,
-	0x00a0, 0x00a2, 0x00a4, 0x00a6, 0x00a8, 0x00aa, 0x00ac, 0x00ae,
-	0x00b0, 0x00b2, 0x00b4, 0x00b6, 0x00b8, 0x00ba, 0x00bc, 0x00be,
-	0x00c0, 0x00c2, 0x00c4, 0x00c6, 0x00c8, 0x00ca, 0x00cc, 0x00ce,
-	0x00d0, 0x00d2, 0x00d4, 0x00d6, 0x00d8, 0x00da, 0x00dc, 0x00de,
-	0x00e0, 0x00e2
-};
+
+
+// The hardware revision of the LM-50TCP+ is stored in a "holding" register.
+// The hardware revision is an ASCII string with at most 6 bytes (i.e. at most
+// 5 letters and a trailing EOS). The ASCII characters are located at three
+// 16-bit registers _hwAddrRevision, h_wAddrRevision+1 and _hwAddrRevision+2
+const LM50Device::HwAddr   LM50Device::_hwAddrRevision( 0x0578 );
+const LM50Device::HwLength LM50Device::_hwLengthRevision( 3 );
+
+// The serial number of the LM-50TCP+ is stored in a "holding" register. The 
+// serial number is a 32-bit unsigned integer and is located at the two 16-bit
+// registers _hwAddrSerialNo and _hwAddrSerialNo+1.
+const LM50Device::HwAddr   LM50Device::_hwAddrSerialNo( 0x2710 );
+const LM50Device::HwLength LM50Device::_hwLengthSerialNo( 2 ) ;
+
+// The LM50TCP+ has 50 channels that are stored in "input" registers. Each
+// channel has a 32-bit unsigned integer value.
+// The first value (32-bit) is located at 0x0080 and 0x0081
+// The 50th value (32-bit)  is located at 0x00e2 and 0x00e3
+// This means starting with adress 0x0080 there are 100 16-bit registers to
+// read
+const LM50Device::ChIdx    LM50Device::countChannels( 50 );
+const LM50Device::HwAddr   LM50Device::_hwAddrChannels( 0x0080 );
+const LM50Device::HwLength LM50Device::_hwLengthChannels( 100 );
 
 
 LM50Device::LM50Device() : \
@@ -31,8 +46,9 @@ LM50Device::LM50Device() : \
 	_lastRequestId(0), \
 	_lastReplyId(0), \
 	_revision(), \
-	_serialNo(0) {
-	for( ChIdx i( firstChannel ); i <= lastChannel; ++i ) _channels[ i-firstChannel ] = 0;
+	_serialNo(0), \
+	_channels( new unsigned int[countChannels] ) {
+	for( ChIdx i( 0 ); i < countChannels; ++i ) _channels[ i ] = 0;
 }
 
 LM50Device::LM50Device( const std::string& h, const std::string& p ) : \
@@ -43,10 +59,25 @@ LM50Device::LM50Device( const std::string& h, const std::string& p ) : \
 	_lastRequestId(0), \
 	_lastReplyId(0), \
 	_revision(), \
-	_serialNo(0) {
-	for( ChIdx i( firstChannel ); i <= lastChannel; ++i ) _channels[ i-firstChannel ] = 0;
+	_serialNo(0), \
+	_channels( new unsigned int[countChannels] ) {
+	for( ChIdx i( 0 ); i < countChannels; ++i ) _channels[ i ] = 0;
 }
 
+/**
+ * Internal convinience function. It takes a request datagram, binds it to
+ * the communication socket, sends it and waits for a respone datagram. The
+ * primary purpose is to check for some common error conditions and reduce
+ * code duplication
+ * 
+ * @param req The request datagram. The function assumes that this is either
+ * a ReadHoldingRegistersReq or ReadInputRegistersReq object. No check is
+ * performed, because this is an internal class function
+ * @return Returns the response datagram. The return value is never NULL and
+ * either a ReadHoldingRegistersRes or ReadInputRegistersRes object depending
+ * on the type of the input parameter. The caller is responsible to free the
+ * returned object.
+ */
 Datagram::Base* LM50Device::readValue( const Datagram::Base& req ) {
 	TcpRequestAndReply rar( _tcpComm.createRequestAndReply( req ) );
 	rar.run();
@@ -60,6 +91,15 @@ Datagram::Base* LM50Device::readValue( const Datagram::Base& req ) {
 	return rar.releaseResponse();
 }
 
+/**
+ * Internal convinience function to read the value of a "holding" register from
+ * the device. It calls LM50Device::readValue internally.
+ * @param addr The starting address of the register
+ * @param length The length of the register in 16bit blocks
+ * @return Returns the response diagram. The return value is never NULL otherwise
+ * an exception had been thrown. The caller is responsible to free the
+ * returned object.
+ */
 Datagram::ReadHoldingRegistersRes* LM50Device::readHValue( HwAddr addr, HwLength length ) {
 	Datagram::ReadHoldingRegistersReq req( ++_lastRequestId, _unitId, addr, length );
 	// The return value of the next function call is not NULL and not an error
@@ -78,6 +118,15 @@ Datagram::ReadHoldingRegistersRes* LM50Device::readHValue( HwAddr addr, HwLength
 	return hres;
 }
 
+/**
+ * Internal convinience function to read the value of an "input" register from
+ * the device. It calls LM50Device::readValue internally.
+ * @param addr The starting address of the register
+ * @param length The length of the register in 16bit blocks
+ * @return Returns the response diagram. The return value is never NULL otherwise
+ * an exception had been thrown. The caller is responsible to free the
+ * returned object.
+ */
 Datagram::ReadInputRegistersRes* LM50Device::readIValue( HwAddr addr, HwLength length ) {
 	Datagram::ReadInputRegistersReq req( ++_lastRequestId, _unitId, addr, length );
 	// The return value of the next function call is not NULL and not an error
@@ -97,59 +146,89 @@ Datagram::ReadInputRegistersRes* LM50Device::readIValue( HwAddr addr, HwLength l
 }
 
 
+/**
+ * The LM50TCP+ has two holding registers that normally stay constant. One
+ * register holds the hardware revision, the other stores the serial number.
+ * This function queries their values and stores them in the respective
+ * attributes of this class.
+ */
 void LM50Device::readSteadyValues() {
-	// Read hardware revision of the LM-50TCP+. This is a ASCII string with
-	// at most 6 bytes (i.e. at most 5 letters and a trailing EOS).
-	// The ASCII characters are located at the the three 16-bit registers
-	// hwAddrRevision, hwAddrRevision+1 and hwAddrRevision+2
-	Datagram::ReadHoldingRegistersRes* hres = readHValue( hwAddrRevision, 3  );
+	// See comment on constants _hwAddrRevision, _hwLengthRevision,
+	// _hwAddrSerialNo and _hwLengthSerialNo for further information.
+	
+	Datagram::ReadHoldingRegistersRes* hres = readHValue( _hwAddrRevision, _hwLengthRevision  );
 	Interpreter::ASCII< Datagram::ReadHoldingRegistersRes > ascii( *hres );
 	_revision = ascii.string();
 	delete hres;
 	
-	// Read serial number of the LM-50TCP+. This is a 32-bit unsigned integer
-	// and is located at the two 16-bit registers hwAddrSerialNo and hwAddrSerialNo+1.
-	hres = readHValue( hwAddrSerialNo, 2  );
+	hres = readHValue( _hwAddrSerialNo, _hwLengthSerialNo  );
 	Interpreter::UInt32< Datagram::ReadHoldingRegistersRes > serial( *hres );
 	_serialNo = serial.value( 0 );
 	delete hres;
 }
 
+/**
+ * The LM50TCP+ has 50 input registers that store the counter of each channels.
+ * This function queries all 50 registers and writes their values into the
+ * respective attributes of this class. On success the update time is
+ * set to the current timestamp (@see LM50Device::lasUpdate).
+ * Even if only one channel was needed it is cheap to query all 50 channels.
+ * Most time is spent for establishing a TCP connection and the three-way
+ * handshake. If more than one input register is needed, it is cheaper to
+ * query all 50 input register in a bulk than query two registers individually,
+ * even if the latter reuse an existing TCP connection. The LM50TCP+ seems be
+ * very slow in interpreting a datagram, hence two datagrams are always
+ * slower than one datagram, even if the latter has 50 times more payload.
+ */
 void LM50Device::updateVolatileValues() {
-	// Now read all meter values
-	// The first value (32-bit) is located at 0x0080 and 0x0081
-	// The 50th value (32-bit)  is located at 0x00e2 and 0x00e3
-	// This means starting with adress 0x0080 there are 100 16-bit registers to
-	// read
-	Datagram::ReadInputRegistersRes* ires = readIValue( _hwAddrChannel[0], 2*(lastChannel - firstChannel + 1)  );
+	// See comment on constants _hwAddrChannels and _hwLengthChannels for
+	// further information.
+	Datagram::ReadInputRegistersRes* ires = readIValue( _hwAddrChannels, _hwLengthChannels  );
 	Interpreter::UInt32< Datagram::ReadInputRegistersRes > chs( *ires );
-	if( chs.size() != lastChannel - firstChannel + 1 ) {
+	if( chs.size() != countChannels ) {
 		delete ires;
 		throw runtime_error( "ModBus error: Received a truncated response datagram" );
 	}
-	for( ChIdx j = 0; j < chs.size(); j++ ) _channels[j] = chs.value(j);
+	for( ChIdx j = 0; j < countChannels; j++ ) _channels[j] = chs.value(j);
 	delete ires;
 	_lastUpdate = boost::posix_time::microsec_clock::universal_time();
 }
 
+/**
+ * @return The hardware revision of the LM50TCP+
+ * @throw runtime_error Thrown, if LM50Device::readSteadyValues has not been
+ * called yet and the cached value is invalid.
+ */
 const string& LM50Device::revision() const {
 	if( _revision.empty() ) throw runtime_error( "Revision value not valid. Function \"readSteadyValues\" has never been called yet or has not been successful" );
 	return _revision;
 }
 
+/**
+ * @return The serial number of the LM50TCP+
+ * @throw runtime_error Thrown, if LM50Device::readSteadyValues has not been
+ * called yet and the cached value is invalid.
+ */
 unsigned int LM50Device::serialNumber() const {
 	if( _revision.empty() ) throw runtime_error( "Serial number not valid. Function \"readSteadyValues\" has never been called yet or has not been successful" );
 	return _serialNo;
 }
 
+/**
+ * @return The cached value of the given channel
+ * @param ch The channel index between 0 and LM50Device::countChannels
+ * @throw runtime_error Thrown, if LM50Device::updateVolatileValues has not been
+ * called yet and the cached value is invalid.
+ * @throw range_error Thrown, if parameter ch is out of range
+ */
 unsigned int LM50Device::channel( ChIdx ch ) const {
 	if( _lastUpdate.is_not_a_date_time() ) throw runtime_error( "Channel values are not valid. Function \"updateVolatileValues\" has never been called yet or has not been successful" );
-	if( firstChannel > ch || ch > lastChannel ) {
+	if( ch >= countChannels ) {
 		ostringstream msg;
-		msg << "Channel index out of range. Index must be between " << firstChannel << " and " << lastChannel << ".";
+		msg << "Channel index out of range. Index must be between 0 and " << (countChannels-1) << ".";
 		throw range_error( msg.str() );
 	}
-	return _channels[ ch - firstChannel ];
+	return _channels[ ch ];
 }
 
 }

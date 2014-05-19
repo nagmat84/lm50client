@@ -59,26 +59,25 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	
 	// Create list of channels, skip duplicates. If no channels are given,
 	// create list of all channels
-	const ChIdx chMin( LM50Device::firstChannel );
-	const ChIdx chMax( LM50Device::lastChannel );
-	
 	if( _boostVMap[ "channels" ].empty() ) {
 		_channels.clear();
-		_channels.reserve( chMax - chMin + 1 );
-		for( ChIdx i( chMin ); i <= chMax; i++ ) _channels.push_back(i);
+		_channels.reserve( LM50Device::countChannels );
+		for( ChIdx i( 0 ); i < LM50Device::countChannels; i++ ) _channels.push_back(i);
 	} else {
 		_channels = _boostVMap[ "channels" ].as< ChList >();
 		std::sort< ChList::iterator >( _channels.begin(), _channels.end() );
 		ChList::iterator it( std::unique< ChList::iterator >( _channels.begin(), _channels.end() ) );
 		_channels.resize( it - _channels.begin() );
 		
-		// Check if at least one channel remained and that the remaining channels
-		// are in the correct range
+		// Check if at least one channel remained, decrease each channel index
+		// and ensure that the remaining channels indizes are in the correct range
+		// Decreasing is necessary, because externally (to/from CLI) the indizes
+		// are between 1 and 50, internally they are between 0 and 49
 		std::ostringstream msg;
-		msg << "The channels must be between " << chMin << " and " << chMax;
+		msg << "The channels must be between 1 and " << LM50Device::countChannels;
 		if( _channels.empty() ) throw std::domain_error( msg.str() );
-		for( ChList::const_iterator it( _channels.begin() ); it != _channels.end(); it++ ) {
-			if( *it < chMin || *it > chMax ) throw std::domain_error( msg.str() );
+		for( ChList::iterator it( _channels.begin() ); it != _channels.end(); it++ ) {
+			if( --(*it) >= LM50Device::countChannels ) throw std::domain_error( msg.str() );
 		}
 	}
 }
