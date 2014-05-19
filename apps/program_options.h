@@ -3,7 +3,7 @@
 
 #include <boost/program_options.hpp>
 #include <string>
-#include "lm50device.h"
+#include "core/lm50device.h"
 
 namespace LM50 {
 

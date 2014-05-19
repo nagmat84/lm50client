@@ -1,5 +1,4 @@
 #include "program_options.h"
-#include "lm50device.h"
 
 namespace LM50 {
 
