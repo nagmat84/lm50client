@@ -11,7 +11,7 @@ class ProgramOptions {
 	public:
 		typedef LM50Device::ChIdx ChIdx;
 		typedef std::vector< ChIdx > ChList;
-		enum OperationMode { UNKNOWN, FULL, CACTI, DAEMON };
+		enum OperationMode { UNKNOWN, HUMAN, CACTI, DAEMON };
 	
 	public:
 		ProgramOptions();
@@ -42,6 +42,8 @@ class ProgramOptions {
 		bool _hasOptionHelp;
 		std::string _host;
 		std::string _port; // port is a string, because telling name (i.e. 'http' insted of 80) are valid, too
+		bool _foreground;
+		boost::posix_time::seconds _pollingPeriod;
 		ChList _channels;
 };
 

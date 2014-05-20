@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <vector>
 #include "lm50client.h"
-#include "mode_full.h"
+#include "mode_human.h"
 #include "mode_cacti.h"
 
 namespace LM50 {
@@ -29,8 +29,8 @@ void LM50ClientApp::run() {
 	ProgramMode *pmode( nullptr );
 	
 	switch( _programOptions.operationMode() ) {
-		case ProgramOptions::FULL:
-			pmode = new ModeFull( *this );
+		case ProgramOptions::HUMAN:
+			pmode = new ModeHuman( *this );
 			break;
 		case ProgramOptions::CACTI:
 			pmode = new ModeCacti( *this );

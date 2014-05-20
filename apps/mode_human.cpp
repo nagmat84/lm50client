@@ -1,4 +1,4 @@
-#include "mode_full.h"
+#include "mode_human.h"
 #include "lm50client.h"
 #include "core/lm50device.h"
 
@@ -9,7 +9,7 @@ namespace LM50 {
  * received data to standard output in a nice human readable form.
  * Errors and their description are printed to standard output, too.
  */
-void ModeFull::run() {
+void ModeHuman::run() {
 	std::cout << "===  LM-50TCP+ === " << std::endl << std::endl;
 	std::cout << "Host    :  " << _app.programOptions().host() << std::endl;
 	std::cout << "Port    :  " << _app.programOptions().port() << std::endl;

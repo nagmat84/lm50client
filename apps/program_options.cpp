@@ -9,14 +9,18 @@ ProgramOptions::ProgramOptions() : \
 	_hasOptionHelp( false ),\
 	_host(),\
 	_port(),\
+	_foreground( false ),\
+	_pollingPeriod( 30 ),
 	_channels() {
 	_boostOptDesc.add_options()
 		( "help", "Prints this help message." )
 		( "host,h", boost::program_options::value< std::string >(), "The DNS name of the LM50TCP+ to connect to." )
 		( "port,p", boost::program_options::value< std::string >()->default_value( std::string( "502") ), "The port on that the LM50TCP+ listens (default 502). The port can either be given as an integer or as a well-known servive name. E.g. \"http\" is identical to \"80\"." )
-		( "full,f", "Operation mode \"full\": Writes results to standard output in a nice human readable layout." )
+		( "human,h", "Operation mode \"human\": Writes results to standard output in a nice human readable layout." )
 		( "cacti,c", "Operation mode \"cacti\": Write results to standard output such that they can be parsed by cacti." )
-		( "daemon,d", "Operation mode \"deamon\": Forks into background and polls the LM50TCP+ periodically." )
+		( "daemon,d", "Operation mode \"daemon\": Forks into background and polls the LM50TCP+ periodically." )
+		( "foreground,f", "In daemon mode only: Do not fork into background but write operational log to standard output for debugging purpose" )
+		( "time,t", boost::program_options::value< unsigned long >()->default_value( _pollingPeriod.total_seconds() ), "In daemon mode only: Number of seconds between polling new values from the device" )
 		( "channels,C", boost::program_options::value< ChList >()->multitoken(), "Specifies the channels whose values are polled and processed. Multiple channel numbers must be seperated by white spaces. If the option is specified more than once, the lists of channels are joined. The channels are sorted increasingly and duplicates are skipped. E.g. \"-C 6 11 9 6 -C 11\" is equivalent to \"-C 6 9 11\". If no channels are given, all available channels are polled." );
 }
 
@@ -50,10 +54,15 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	}
 	
 	// Exactly one of the operation modes must be defined
-	if( _boostVMap.count( "full" ) != 0 ) operationMode( FULL );
+	if( _boostVMap.count( "human" ) != 0 ) operationMode( HUMAN );
 	if( _boostVMap.count( "cacti" ) != 0 ) operationMode( CACTI );
 	if( _boostVMap.count( "daemon" ) != 0 ) operationMode( DAEMON );
-	if( operationMode() == UNKNOWN ) throw std::invalid_argument( "Either one of the operation mode option \"full\" or \"cacti\" must be set" );
+	if( operationMode() == UNKNOWN ) throw std::invalid_argument( "Either one of the operation modes \"human\", \"daemon\" or \"cacti\" must be set" );
+	
+	// Check options that are specific to daemon mode, but do not throw an error
+	// if the options are set but daemon mode is not selected
+	if( _boostVMap.count( "foreground" ) != 0 ) _foreground = true;
+	if( _boostVMap.count( "time" ) != 0 ) _pollingPeriod = boost::posix_time::seconds( _boostVMap[ "port" ].as< unsigned long >() );
 	
 	
 	// Create list of channels, skip duplicates. If no channels are given,
