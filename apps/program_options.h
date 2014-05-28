@@ -34,7 +34,7 @@ class ProgramOptions {
 		
 		bool beVerbose() const { return _verbose; }
 		
-		const boost::posix_time::seconds& pollingPeriod() const { return _pollingPeriod; }
+		unsigned long pollingPeriod() const { return _pollingPeriod; }
 		
 		const ChList& channels() const { return _channels; }
 		
@@ -50,7 +50,7 @@ class ProgramOptions {
 		std::string _port; // port is a string, because telling name (i.e. 'http' insted of 80) are valid, too
 		bool _foreground;
 		bool _verbose;
-		boost::posix_time::seconds _pollingPeriod;
+		unsigned long _pollingPeriod; // polling period in seconds
 		ChList _channels;
 };
 

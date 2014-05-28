@@ -22,7 +22,7 @@ ProgramOptions::ProgramOptions() : \
 		( "daemon,d", "Operation mode \"daemon\": Forks into background and polls the LM50TCP+ periodically." )
 		( "foreground,f", "In daemon mode only: Do not fork into background but write operational log to standard output for debugging purpose" )
 		( "verbose,v", "In daemon mode only: Do not fork into background but write verbose log to standard output for debugging purpose" )
-		( "time,t", boost::program_options::value< unsigned long >()->default_value( _pollingPeriod.total_seconds() ), "In daemon mode only: Number of seconds between polling new values from the device" )
+		( "time,t", boost::program_options::value< unsigned long >()->default_value( _pollingPeriod ), "In daemon mode only: Number of seconds between polling new values from the device" )
 		( "channels,C", boost::program_options::value< ChList >()->multitoken(), "Specifies the channels whose values are polled and processed. Multiple channel numbers must be seperated by white spaces. If the option is specified more than once, the lists of channels are joined. The channels are sorted increasingly and duplicates are skipped. E.g. \"-C 6 11 9 6 -C 11\" is equivalent to \"-C 6 9 11\". If no channels are given, all available channels are polled." );
 }
 
@@ -65,7 +65,7 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	// if the options are set but daemon mode is not selected
 	if( _boostVMap.count( "foreground" ) != 0 ) _foreground = true;
 	if( _boostVMap.count( "verbose" ) != 0 ) _verbose = _foreground; // verbose requires foreground
-	if( _boostVMap.count( "time" ) != 0 ) _pollingPeriod = boost::posix_time::seconds( _boostVMap[ "time" ].as< unsigned long >() );
+	if( _boostVMap.count( "time" ) != 0 ) _pollingPeriod = _boostVMap[ "time" ].as< unsigned long >();
 	
 	
 	// Create list of channels, skip duplicates. If no channels are given,

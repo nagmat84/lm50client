@@ -114,12 +114,14 @@ void ModeDaemon::run() {
 	init();
 	if( !daemonize() ) return;
 	
-	const long nsPerTick( 1000000000 / boost::posix_time::time_duration::ticks_per_second() );
-	boost::posix_time::ptime startUpdate( boost::posix_time::not_a_date_time );
-	boost::posix_time::ptime stopUpdate( boost::posix_time::not_a_date_time );
-	const boost::posix_time::seconds& pollingPeriod( _app.programOptions().pollingPeriod() );
-	boost::posix_time::time_duration sleepDuration( pollingPeriod );
-	struct timespec sleepDuration2;
+	//const long nsPerTick( 1000000000 / boost::posix_time::time_duration::ticks_per_second() );
+	//boost::posix_time::ptime startUpdate( boost::posix_time::not_a_date_time );
+	//boost::posix_time::ptime stopUpdate( boost::posix_time::not_a_date_time );
+	unsigned long pollingPeriod( _app.programOptions().pollingPeriod() );
+	//boost::posix_time::time_duration sleepDuration( pollingPeriod );
+	struct timespec timeNow;
+	struct timespec timeBeat;
+	int ret(1);
 	
 	const ProgramOptions::ChList& ch( _app.programOptions().channels() );
 	ProgramOptions::ChList::const_iterator chIt;
@@ -130,7 +132,9 @@ void ModeDaemon::run() {
 	// Print header in CSV file. A 32bit integer has at most 10 digets, hence
 	// the column width must be at least 11 characters. But due the caption
 	// and the surrounding quotation marks the column width is 12 characters
-	// anyway
+	// anyway. The time column 31 characters including the quotation marks.
+	_file << "\"Time\"                         ;";
+	if( fg ) std::cout << "\"Time\"                         ;";
 	for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
 		_file << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
 		if( fg ) std::cout << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
@@ -138,37 +142,41 @@ void ModeDaemon::run() {
 	_file << std::setfill( ' ' ) << std::endl;
 	if( fg ) std::cout << std::setfill( ' ' ) << std::endl;
 	
-	
-	if( verb ) std::cerr << "Nano seconds per POSIX tick: " << nsPerTick << std::endl;
-	
+
+	// Get time point of first measurement
+	clock_gettime( CLOCK_REALTIME, &timeBeat );
 	// Run a "endless" loop until the termination signal is received
 	do  {
-		// Obtain new values from device, write them to file and measure the
-		// duration
-		startUpdate = boost::posix_time::microsec_clock::universal_time();
-		if( verb ) std::cerr << "Update start time: " << boost::posix_time::to_simple_string( startUpdate ) << std::endl;
+		// Obtain new values from device and write them to file
 		_dev.updateVolatileValues();
+		_file << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _dev.lastUpdate() ) << "\";";
+		if( verb ) std::cout << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _dev.lastUpdate() ) << "\";";
 		for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
-			_file << std::setw( 12 ) << _dev.channel( *chIt ) << ';';
-			if( fg ) std::cout << std::setw( 12 ) << _dev.channel( *chIt ) << ';';
+			_file << std::setw( 12 ) << std::setfill( ' ' ) << _dev.channel( *chIt ) << ';';
+			if( fg ) std::cout << std::setw( 12 ) << std::setfill( ' ' ) << _dev.channel( *chIt ) << ';';
 		}
 		_file << std::endl;
 		if( fg ) std::cout << std::endl;
-		stopUpdate = boost::posix_time::microsec_clock::universal_time();
-		if( verb ) std::cerr << "Update stop time: " << boost::posix_time::to_simple_string( stopUpdate ) << std::endl;
 		
-		// Check if a signal came in the meantime before we go to sleep.
-		// Sleep will be interrupted immediately, be a signal
-		if( _action == Terminate ) break;
-		sleepDuration = pollingPeriod - ( stopUpdate - startUpdate );
-		if( verb ) std::cerr << "Sleep duration: " << boost::posix_time::to_simple_string( sleepDuration );
-		sleepDuration2.tv_sec = sleepDuration.total_seconds();
-		sleepDuration2.tv_nsec = sleepDuration.fractional_seconds() * nsPerTick;
-		assert( sleepDuration2.tv_nsec > 0 );
-		if( verb ) std::cerr << " ==> " << sleepDuration2.tv_sec << "s + " << sleepDuration2.tv_nsec << "ns" << std::endl;
-		if( verb ) std::cerr << "Go to sleep ..." << std::flush;
-		nanosleep( &sleepDuration2, NULL );
-		if( verb ) std::cerr << " and wake up" << std::endl;
+		// Increase time beat to next measurement point and compare to current
+		// time. Ensure that the next time beat is in the future.
+		timeBeat.tv_sec += pollingPeriod;
+		clock_gettime( CLOCK_REALTIME, &timeNow );
+		while( timeNow.tv_sec > timeBeat.tv_sec ) {
+			if( fg ) std::cerr << "Warning: Update step too long for requested polling period. Skipping time point." << std::endl;
+			timeBeat.tv_sec += pollingPeriod;
+		}
+		
+		// Wrap the call to sleep into a loop, because clock_nanosleep might be
+		// interrupted by a signal. If that signal does not need any reaction
+		// go to sleep again.
+		ret = 1;
+		while( ret != 0 && _action == NoAction ) {
+			if( verb ) std::cerr << "Go to sleep ..." << std::flush;
+			ret = clock_nanosleep( CLOCK_REALTIME, TIMER_ABSTIME, &timeBeat, NULL );
+			if( verb ) std::cerr << " and wake up" << std::endl;
+		}
+		
 	} while( _action != Terminate );
 	
 	deinit();
