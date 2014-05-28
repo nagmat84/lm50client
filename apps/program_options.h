@@ -32,6 +32,8 @@ class ProgramOptions {
 		
 		bool stayInForeground() const { return _foreground; }
 		
+		bool beVerbose() const { return _verbose; }
+		
 		const boost::posix_time::seconds& pollingPeriod() const { return _pollingPeriod; }
 		
 		const ChList& channels() const { return _channels; }
@@ -47,6 +49,7 @@ class ProgramOptions {
 		std::string _host;
 		std::string _port; // port is a string, because telling name (i.e. 'http' insted of 80) are valid, too
 		bool _foreground;
+		bool _verbose;
 		boost::posix_time::seconds _pollingPeriod;
 		ChList _channels;
 };

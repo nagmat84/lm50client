@@ -10,16 +10,18 @@ ProgramOptions::ProgramOptions() : \
 	_host(),\
 	_port(),\
 	_foreground( false ),\
+	_verbose( false ),\
 	_pollingPeriod( 30 ),
 	_channels() {
 	_boostOptDesc.add_options()
 		( "help", "Prints this help message." )
 		( "host,h", boost::program_options::value< std::string >(), "The DNS name of the LM50TCP+ to connect to." )
 		( "port,p", boost::program_options::value< std::string >()->default_value( std::string( "502") ), "The port on that the LM50TCP+ listens (default 502). The port can either be given as an integer or as a well-known servive name. E.g. \"http\" is identical to \"80\"." )
-		( "standalone,s", "Operation mode \"standalone\": Writes results to standard output in a nice 		 readable layout." )
+		( "standalone,s", "Operation mode \"standalone\": Writes results to standard output in a nice readable layout." )
 		( "cacti,c", "Operation mode \"cacti\": Write results to standard output such that they can be parsed by cacti." )
 		( "daemon,d", "Operation mode \"daemon\": Forks into background and polls the LM50TCP+ periodically." )
 		( "foreground,f", "In daemon mode only: Do not fork into background but write operational log to standard output for debugging purpose" )
+		( "verbose,v", "In daemon mode only: Do not fork into background but write verbose log to standard output for debugging purpose" )
 		( "time,t", boost::program_options::value< unsigned long >()->default_value( _pollingPeriod.total_seconds() ), "In daemon mode only: Number of seconds between polling new values from the device" )
 		( "channels,C", boost::program_options::value< ChList >()->multitoken(), "Specifies the channels whose values are polled and processed. Multiple channel numbers must be seperated by white spaces. If the option is specified more than once, the lists of channels are joined. The channels are sorted increasingly and duplicates are skipped. E.g. \"-C 6 11 9 6 -C 11\" is equivalent to \"-C 6 9 11\". If no channels are given, all available channels are polled." );
 }
@@ -62,6 +64,7 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	// Check options that are specific to daemon mode, but do not throw an error
 	// if the options are set but daemon mode is not selected
 	if( _boostVMap.count( "foreground" ) != 0 ) _foreground = true;
+	if( _boostVMap.count( "verbose" ) != 0 ) _verbose = _foreground; // verbose requires foreground
 	if( _boostVMap.count( "time" ) != 0 ) _pollingPeriod = boost::posix_time::seconds( _boostVMap[ "time" ].as< unsigned long >() );
 	
 	

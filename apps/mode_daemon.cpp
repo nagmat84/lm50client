@@ -114,7 +114,7 @@ void ModeDaemon::run() {
 	init();
 	if( !daemonize() ) return;
 	
-	const long NsPerTicks( 1000000000 / boost::posix_time::time_duration::ticks_per_second() );
+	const long nsPerTick( 1000000000 / boost::posix_time::time_duration::ticks_per_second() );
 	boost::posix_time::ptime startUpdate( boost::posix_time::not_a_date_time );
 	boost::posix_time::ptime stopUpdate( boost::posix_time::not_a_date_time );
 	const boost::posix_time::seconds& pollingPeriod( _app.programOptions().pollingPeriod() );
@@ -124,36 +124,51 @@ void ModeDaemon::run() {
 	const ProgramOptions::ChList& ch( _app.programOptions().channels() );
 	ProgramOptions::ChList::const_iterator chIt;
 	
+	bool fg( _app.programOptions().stayInForeground() );
+	bool verb( _app.programOptions().beVerbose() );
+	
 	// Print header in CSV file. A 32bit integer has at most 10 digets, hence
 	// the column width must be at least 11 characters. But due the caption
 	// and the surrounding quotation marks the column width is 12 characters
 	// anyway
 	for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
 		_file << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
+		if( fg ) std::cout << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
 	}
 	_file << std::setfill( ' ' ) << std::endl;
+	if( fg ) std::cout << std::setfill( ' ' ) << std::endl;
 	
+	
+	if( verb ) std::cerr << "Nano seconds per POSIX tick: " << nsPerTick << std::endl;
 	
 	// Run a "endless" loop until the termination signal is received
 	do  {
 		// Obtain new values from device, write them to file and measure the
 		// duration
 		startUpdate = boost::posix_time::microsec_clock::universal_time();
+		if( verb ) std::cerr << "Update start time: " << boost::posix_time::to_simple_string( startUpdate ) << std::endl;
 		_dev.updateVolatileValues();
 		for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
 			_file << std::setw( 12 ) << _dev.channel( *chIt ) << ';';
+			if( fg ) std::cout << std::setw( 12 ) << _dev.channel( *chIt ) << ';';
 		}
 		_file << std::endl;
+		if( fg ) std::cout << std::endl;
 		stopUpdate = boost::posix_time::microsec_clock::universal_time();
+		if( verb ) std::cerr << "Update stop time: " << boost::posix_time::to_simple_string( stopUpdate ) << std::endl;
 		
 		// Check if a signal came in the meantime before we go to sleep.
 		// Sleep will be interrupted immediately, be a signal
 		if( _action == Terminate ) break;
 		sleepDuration = pollingPeriod - ( stopUpdate - startUpdate );
+		if( verb ) std::cerr << "Sleep duration: " << boost::posix_time::to_simple_string( sleepDuration );
 		sleepDuration2.tv_sec = sleepDuration.total_seconds();
-		sleepDuration2.tv_nsec = sleepDuration.fractional_seconds() * NsPerTicks;
+		sleepDuration2.tv_nsec = sleepDuration.fractional_seconds() * nsPerTick;
 		assert( sleepDuration2.tv_nsec > 0 );
+		if( verb ) std::cerr << " ==> " << sleepDuration2.tv_sec << "s + " << sleepDuration2.tv_nsec << "ns" << std::endl;
+		if( verb ) std::cerr << "Go to sleep ..." << std::flush;
 		nanosleep( &sleepDuration2, NULL );
+		if( verb ) std::cerr << " and wake up" << std::endl;
 	} while( _action != Terminate );
 	
 	deinit();

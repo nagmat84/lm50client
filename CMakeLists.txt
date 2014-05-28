@@ -4,7 +4,7 @@ cmake_minimum_required( VERSION 2.6 )
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY} )
 
-find_package( Boost COMPONENTS system program_options )
+find_package( Boost COMPONENTS system program_options date_time )
 
 include_directories( BEFORE . )
 
