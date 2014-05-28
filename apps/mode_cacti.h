@@ -11,7 +11,7 @@ class ModeCacti : public ProgramMode {
 		virtual ~ModeCacti() {}
 		
 	public:
-		void run();
+		virtual void run();
 };
 
 }

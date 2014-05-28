@@ -11,7 +11,7 @@ class ModeHuman : public ProgramMode {
 		virtual ~ModeHuman() {}
 		
 	public:
-		void run();
+		virtual void run();
 };
 
 }

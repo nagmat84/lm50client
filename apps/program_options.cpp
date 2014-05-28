@@ -16,7 +16,7 @@ ProgramOptions::ProgramOptions() : \
 		( "help", "Prints this help message." )
 		( "host,h", boost::program_options::value< std::string >(), "The DNS name of the LM50TCP+ to connect to." )
 		( "port,p", boost::program_options::value< std::string >()->default_value( std::string( "502") ), "The port on that the LM50TCP+ listens (default 502). The port can either be given as an integer or as a well-known servive name. E.g. \"http\" is identical to \"80\"." )
-		( "human,h", "Operation mode \"human\": Writes results to standard output in a nice human readable layout." )
+		( "standalone,s", "Operation mode \"standalone\": Writes results to standard output in a nice 		 readable layout." )
 		( "cacti,c", "Operation mode \"cacti\": Write results to standard output such that they can be parsed by cacti." )
 		( "daemon,d", "Operation mode \"daemon\": Forks into background and polls the LM50TCP+ periodically." )
 		( "foreground,f", "In daemon mode only: Do not fork into background but write operational log to standard output for debugging purpose" )
@@ -54,15 +54,15 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	}
 	
 	// Exactly one of the operation modes must be defined
-	if( _boostVMap.count( "human" ) != 0 ) operationMode( HUMAN );
+	if( _boostVMap.count( "standalone" ) != 0 ) operationMode( HUMAN );
 	if( _boostVMap.count( "cacti" ) != 0 ) operationMode( CACTI );
 	if( _boostVMap.count( "daemon" ) != 0 ) operationMode( DAEMON );
-	if( operationMode() == UNKNOWN ) throw std::invalid_argument( "Either one of the operation modes \"human\", \"daemon\" or \"cacti\" must be set" );
+	if( operationMode() == UNKNOWN ) throw std::invalid_argument( "Either one of the operation modes \"standalone\", \"daemon\" or \"cacti\" must be set" );
 	
 	// Check options that are specific to daemon mode, but do not throw an error
 	// if the options are set but daemon mode is not selected
 	if( _boostVMap.count( "foreground" ) != 0 ) _foreground = true;
-	if( _boostVMap.count( "time" ) != 0 ) _pollingPeriod = boost::posix_time::seconds( _boostVMap[ "port" ].as< unsigned long >() );
+	if( _boostVMap.count( "time" ) != 0 ) _pollingPeriod = boost::posix_time::seconds( _boostVMap[ "time" ].as< unsigned long >() );
 	
 	
 	// Create list of channels, skip duplicates. If no channels are given,

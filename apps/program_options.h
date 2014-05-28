@@ -30,6 +30,10 @@ class ProgramOptions {
 		
 		const std::string& port() const { return _port; }
 		
+		bool stayInForeground() const { return _foreground; }
+		
+		const boost::posix_time::seconds& pollingPeriod() const { return _pollingPeriod; }
+		
 		const ChList& channels() const { return _channels; }
 		
 	protected:
