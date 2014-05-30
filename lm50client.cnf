@@ -2,15 +2,20 @@
 # Config file for lm50client
 #
 
-#host = hekddcga.hek.uni-karlsruhe.de
+host = hekddcga.hek.uni-karlsruhe.de
 #port = 502
-#mode = human
-#channels = 1 2 12 16
+mode = daemon
 #workers = rrd report
+workers = rrd
+channels = 1
+channels = 2
+channels = 12
+channels = 16
 
 [rrd]
 #file = /srv/cacti/rrd/lm50.rrd
-#period = 30
+file = /tmp/lm50client.csv
+period = 2
 
 [report]
 #file = /var/cache/lm50client/report
