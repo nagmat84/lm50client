@@ -44,7 +44,7 @@ int WorkerRrd::run() {
 		// Obtain new values from device and write them to file
 		_parent.device().updateVolatileValues();
 		file << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.device().lastUpdate() ) << "\";";
-		if( verb ) std::cout << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.device().lastUpdate() ) << "\";";
+		if( fg ) std::cout << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.device().lastUpdate() ) << "\";";
 		for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
 			file << std::setw( 12 ) << std::setfill( ' ' ) << _parent.device().channel( *chIt ) << ';';
 			if( fg ) std::cout << std::setw( 12 ) << std::setfill( ' ' ) << _parent.device().channel( *chIt ) << ';';
