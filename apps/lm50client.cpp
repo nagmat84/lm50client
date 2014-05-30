@@ -24,11 +24,6 @@ LM50ClientApp::~LM50ClientApp() {
 }
 
 
-void LM50ClientApp::handleSignal( int sigNo ) {
-	if( !_me ) throw std::runtime_error( "Application caught a signal but it seems that the application does not even exist. What the hell?!" );
-	if( _me->_pMode ) _me->_pMode->handleSignal( sigNo );
-}
-
 LM50ClientApp& LM50ClientApp::create( const ProgramOptions& po ) {
 	if( _me ) throw std::runtime_error( "Application object has already been created" );
 	_me = new LM50ClientApp( po );
@@ -68,22 +63,6 @@ void LM50ClientApp::run() {
 			break;
 		default:
 			throw std::runtime_error( "Unknown fatal error" );;
-	}
-	
-	// Install the handler for all signals the that the program mode requires
-	// This code is horribly inefficient, because according to POSIX standard
-	// there are no limits for the lowest and highest signal nor are there
-	// functions to install a handler for all signals in a set at once.
-	// (N.b.: There a are some GNU extensions to handle these situations, but
-	// their use is not recommended)
-	// Hence, the only portable code is to check individually for each signal
-	// by "sigismember" and run across all integers. >:O :-( :@
-	struct sigaction signalReaction;
-	signalReaction.sa_handler = LM50::LM50ClientApp::handleSignal;
-	signalReaction.sa_mask = _pMode->signalSet();
-	signalReaction.sa_flags = 0;
-	for( int s( 0 ); s != _NSIG; ++s ) {
-		if( sigismember( &(signalReaction.sa_mask), s) ) sigaction( s, &signalReaction, NULL );
 	}
 	
 	// Run the program

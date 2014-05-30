@@ -1,0 +1,18 @@
+#
+# Config file for lm50client
+#
+
+#host = hekddcga.hek.uni-karlsruhe.de
+#port = 502
+#mode = human
+#channels = 1 2 12 16
+#workers = rrd report
+
+[rrd]
+#file = /srv/cacti/rrd/lm50.rrd
+#period = 30
+
+[report]
+#file = /var/cache/lm50client/report
+#period = monthly
+#recipient = heknet@hek.uni-karlsruhe.de

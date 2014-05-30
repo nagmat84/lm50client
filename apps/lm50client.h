@@ -14,7 +14,6 @@ class LM50ClientApp {
 		virtual ~LM50ClientApp();
 		
 	public:
-		static void handleSignal( int sigNo );
 		static LM50ClientApp& create( const ProgramOptions& po );
 		static LM50ClientApp& me() { return *_me; }
 		void destroy() const;

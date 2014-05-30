@@ -9,17 +9,15 @@ class LM50ClientApp;
 
 class ProgramMode {
 	public:
-		ProgramMode( const LM50ClientApp& app ) : _app( app ), _signalSet() { sigemptyset( &_signalSet ); }
+		ProgramMode( const LM50ClientApp& app ) : _app( app ) {}
 		virtual ~ProgramMode() {}
 		
 	public:
-		const sigset_t& signalSet() const { return _signalSet; }
+		const LM50ClientApp& app() const { return _app; }
 		virtual void run() = 0;
-		virtual void handleSignal( int ) {}
 		
 	protected:
 		const LM50ClientApp& _app;
-		sigset_t _signalSet;
 };
 
 }
