@@ -15,7 +15,10 @@ ProgramOptions::ProgramOptions() : \
 	_commonOptionsRRD( "Common options - \"RRD\" module" ),\
 	_commonOptionsReport( "Common options - \"Report\" module" ),\
 	_cmdLineOnlyOptions( "Command line only options" ),\
-	_optionVMap(),\
+	_preOptionVMap(),\
+	_commonOptionVMap(),\
+	_rrdOptionVMap(),\
+	_reportOptionVMap(),\
 	_operationMode( UNKNOWN ),\
 	_hasOptionHelp( false ),\
 	_configFile(),\
@@ -86,26 +89,25 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	// in order to check for the help option. If help option is set return
 	// immediatly. We must call "allow_unregistered" to ignore options that are
 	// not an element of _cmdLineOnlyOptions.
-	po::store( po::command_line_parser( argCount, argVals ).options( _cmdLineOnlyOptions ).allow_unregistered().run(), _optionVMap );
-	po::notify( _optionVMap );
+	po::store( po::command_line_parser( argCount, argVals ).options( _cmdLineOnlyOptions ).allow_unregistered().run(), _preOptionVMap );
+	po::notify( _preOptionVMap );
 	if( _hasOptionHelp ) return;
 	
 	// Parse the command line a second time but this time with respect to all
 	// available command line options. If the first parsing showed that there
 	// is a config file, parse this, too. Ignore unknown options again, because
 	// there might be options for workers that are not enabled.
-	_optionVMap.clear();
-	po::store( po::command_line_parser( argCount, argVals ).options( _cmdLineOnlyOptions ).allow_unregistered().run(), _optionVMap );
-	po::store( po::command_line_parser( argCount, argVals ).options( _commonOptions ).allow_unregistered().run(), _optionVMap );
+	po::store( po::command_line_parser( argCount, argVals ).options( _cmdLineOnlyOptions ).allow_unregistered().run(), _commonOptionVMap );
+	po::store( po::command_line_parser( argCount, argVals ).options( _commonOptions ).allow_unregistered().run(), _commonOptionVMap );
 	if( !_configFile.empty() ) {
 		file.open( _configFile.c_str() );
 		if( file.fail() ) throw std::invalid_argument( "Could not open config file" );
-		po::store( po::parse_config_file( file, _commonOptions, true ), _optionVMap );
+		po::store( po::parse_config_file( file, _commonOptions, true ), _commonOptionVMap );
 	}
-	po::notify( _optionVMap );
+	po::notify( _commonOptionVMap );
 	
 	// Store operation mode
-	string mode( _optionVMap[ "mode" ].as< string >() );
+	string mode( _commonOptionVMap[ "mode" ].as< string >() );
 	if( mode.compare( "human" ) == 0 || mode.compare( "h" ) == 0 ) operationMode( HUMAN );
 	if( mode.compare( "cacti" ) == 0 || mode.compare( "c" ) == 0 ) operationMode( CACTI );
 	if( mode.compare( "daemon" ) == 0 || mode.compare( "d" ) == 0 ) operationMode( DAEMON );
@@ -131,7 +133,7 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	}
 	
 	// Obtain list of workers
-	str_vector workers( _optionVMap[ "workers" ].as< str_vector >() );
+	str_vector workers( _commonOptionVMap[ "workers" ].as< str_vector >() );
 	while( ! workers.empty() ) {
 		string w( workers.back() );
 		workers.pop_back();
@@ -142,30 +144,28 @@ void ProgramOptions::parse( int argCount, char* argVals[] )  {
 	
 	// Parse options for worker "rrd"
 	if( _rrd ) {
-		_optionVMap.clear();
-		po::store( po::command_line_parser( argCount, argVals ).options( _commonOptionsRRD ).allow_unregistered().run(), _optionVMap );
+		po::store( po::command_line_parser( argCount, argVals ).options( _commonOptionsRRD ).allow_unregistered().run(), _rrdOptionVMap );
 		if( file.is_open() ) {
 			file.clear();
 			file.seekg(0);
 			if( file.fail() ) throw std::invalid_argument( "Could seek in config file" );
-			po::store( po::parse_config_file( file, _commonOptionsRRD, true ), _optionVMap );
+			po::store( po::parse_config_file( file, _commonOptionsRRD, true ), _rrdOptionVMap );
 		}
-		po::notify( _optionVMap );
+		po::notify( _rrdOptionVMap );
 	}
 	
 	// Parse options for worker "report"
 	if( _report ) {
-		_optionVMap.clear();
-		po::store( po::command_line_parser( argCount, argVals ).options( _commonOptionsReport ).allow_unregistered().run(), _optionVMap );
+		po::store( po::command_line_parser( argCount, argVals ).options( _commonOptionsReport ).allow_unregistered().run(), _reportOptionVMap );
 		if( file.is_open() ) {
 			file.clear();
 			file.seekg(0);
 			if( file.fail() ) throw std::invalid_argument( "Could seek in config file" );
-			po::store( po::parse_config_file( file, _commonOptionsReport, true ), _optionVMap );
+			po::store( po::parse_config_file( file, _commonOptionsReport, true ), _reportOptionVMap );
 		}
-		po::notify( _optionVMap );
+		po::notify( _reportOptionVMap );
 		
-		string period( _optionVMap[ "report.period" ].as< string >() );
+		string period( _reportOptionVMap[ "report.period" ].as< string >() );
 		if( period.compare( "daily" ) == 0 || mode.compare( "d" ) == 0 ) _reportPeriod = DAILY;
 		else if( period.compare( "weekly" ) == 0 || mode.compare( "w" ) == 0 ) _reportPeriod = WEEKLY;
 		else if( period.compare( "monthly" ) == 0 || mode.compare( "m" ) == 0 ) _reportPeriod = MONTHLY;

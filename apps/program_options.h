@@ -59,7 +59,10 @@ class ProgramOptions {
 		boost::program_options::options_description _commonOptionsRRD;
 		boost::program_options::options_description _commonOptionsReport;
 		boost::program_options::options_description _cmdLineOnlyOptions;
-		boost::program_options::variables_map _optionVMap;
+		boost::program_options::variables_map _preOptionVMap;
+		boost::program_options::variables_map _commonOptionVMap;
+		boost::program_options::variables_map _rrdOptionVMap;
+		boost::program_options::variables_map _reportOptionVMap;
 		OperationMode _operationMode;
 		bool _hasOptionHelp;
 		std::string _configFile;
