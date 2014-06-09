@@ -49,7 +49,7 @@ int WorkerRrd::run() {
 		// Obtain new values from device and write them to file
 		_parent.lockDevice();
 		_parent.deviceUpdate();
-		ostr << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.deviceLastUpdate() ) << "\";";
+		ostr << '"' << std::setw( 29 ) << std::setfill( ' ' ) << boost::posix_time::to_simple_string( _parent.deviceLastUpdate() ) << "\";";
 		for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
 			ostr << std::setw( 12 ) << std::setfill( ' ' ) << _parent.deviceChannel( *chIt ) << ';';
 		}
