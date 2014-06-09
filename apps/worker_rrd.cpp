@@ -8,6 +8,9 @@ WorkerRrd::WorkerRrd( ModeDaemon &parent ) : DaemonWorker( parent ) {
 }
 
 int WorkerRrd::run() {
+	std::ostringstream ostr;
+	ostr.imbue( std::locale( "C" ) );
+	
 	std::ofstream file;
 	file.open( "/tmp/lm50client.csv" );
 	file.imbue( std::locale( "C" ) );
@@ -27,14 +30,16 @@ int WorkerRrd::run() {
 	// the column width must be at least 11 characters. But due the caption
 	// and the surrounding quotation marks the column width is 12 characters
 	// anyway. The time column 31 characters including the quotation marks.
-	file << "\"Time\"                         ;";
-	if( fg ) std::cout << "\"Time\"                         ;";
+	ostr << "\"Time\"                         ;";
 	for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
-		file << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
-		if( fg ) std::cout << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
+		ostr << "\"Channel " << std::setw( 2 ) << std::setfill( '0' ) << (*chIt+1) << "\";";
 	}
-	file << std::setfill( ' ' ) << std::endl;
-	if( fg ) std::cout << std::setfill( ' ' ) << std::endl;
+	ostr << std::setfill( ' ' ) << std::endl;
+	
+	file << ostr.str();
+	if( fg ) std::cout << ostr.str();
+	ostr.str( "" );
+	ostr.clear();
 	
 
 	// Get time point of first measurement
@@ -42,15 +47,19 @@ int WorkerRrd::run() {
 	// Run a "endless" loop until the termination signal is received
 	do  {
 		// Obtain new values from device and write them to file
-		_parent.device().updateVolatileValues();
-		file << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.device().lastUpdate() ) << "\";";
-		if( fg ) std::cout << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.device().lastUpdate() ) << "\";";
+		_parent.lockDevice();
+		_parent.deviceUpdate();
+		ostr << '"' << std::setw( 29 ) << std::setfill( '0' ) << boost::posix_time::to_simple_string( _parent.deviceLastUpdate() ) << "\";";
 		for( chIt =  ch.begin(); chIt != ch.end(); ++chIt ) {
-			file << std::setw( 12 ) << std::setfill( ' ' ) << _parent.device().channel( *chIt ) << ';';
-			if( fg ) std::cout << std::setw( 12 ) << std::setfill( ' ' ) << _parent.device().channel( *chIt ) << ';';
+			ostr << std::setw( 12 ) << std::setfill( ' ' ) << _parent.deviceChannel( *chIt ) << ';';
 		}
-		file << std::endl;
-		if( fg ) std::cout << std::endl;
+		_parent.unlockDevice();
+		ostr << std::endl;
+		
+		file << ostr.str();
+		if( fg ) std::cout << ostr.str();
+		ostr.str( "" );
+		ostr.clear();
 		
 		// Increase time beat to next measurement point and compare to current
 		// time. Ensure that the next time beat is in the future.

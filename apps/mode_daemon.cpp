@@ -7,8 +7,55 @@ namespace LM50 {
 
 ModeDaemon::ModeDaemon( const LM50ClientApp& app ) : \
 	ProgramMode( app ), \
-	_dev( app.programOptions().host(), \
-	app.programOptions().port() ) {
+	_dev( app.programOptions().host(), app.programOptions().port() ), \
+	_mutex(), \
+	_mutex_attr(), \
+	_mutex_owner() {
+	assert( pthread_mutexattr_init( &_mutex_attr ) == 0 );
+	assert( pthread_mutexattr_setprotocol( &_mutex_attr, PTHREAD_PRIO_INHERIT ) == 0 );
+	assert( pthread_mutexattr_settype( &_mutex_attr, PTHREAD_MUTEX_RECURSIVE ) == 0 );
+	assert( pthread_mutex_init( &_mutex, &_mutex_attr ) == 0 );
+}
+
+ModeDaemon::~ModeDaemon() {
+	assert( pthread_mutex_destroy( &_mutex ) == 0 );
+	assert( pthread_mutexattr_destroy( &_mutex_attr ) == 0 );
+}
+
+void ModeDaemon::lockDevice() {
+	pthread_mutex_lock( &_mutex );
+#ifdef DEBUG
+	_mutex_owner = pthread_self();
+#endif
+}
+
+void ModeDaemon::unlockDevice() {
+#ifdef DEBUG
+	assert( pthread_equal( pthread_self(), _mutex_owner ) );
+	_mutex_owner = pthread_t();
+#endif
+	pthread_mutex_unlock( &_mutex );
+}
+
+void ModeDaemon::deviceUpdate() {
+#ifdef DEBUG
+	assert( pthread_equal( pthread_self(), _mutex_owner ) );
+#endif
+	_dev.updateVolatileValues();
+}
+
+boost::posix_time::ptime ModeDaemon::deviceLastUpdate() {
+#ifdef DEBUG
+	assert( pthread_equal( pthread_self(), _mutex_owner ) );
+#endif
+	return _dev.lastUpdate();
+}
+
+unsigned int ModeDaemon::deviceChannel( LM50Device::ChIdx ch ) {
+#ifdef DEBUG
+	assert( pthread_equal( pthread_self(), _mutex_owner ) );
+#endif
+	return _dev.channel( ch );
 }
 
 

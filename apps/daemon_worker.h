@@ -67,14 +67,14 @@ class DaemonWorker {
 		bool _isCancelled;
 		
 		/**
-		 * The thread in whose context the pcap-loop runs
+		 * The thread in whose context the run() is executed
 		 */
 		pthread_t _thread;
 		
 		/**
-		 * The attributes that are used to create the capture thread. The thread
-		 * is created as "joinable" which means that the thread has to be waited for
-		 * after terminating
+		 * This attribute is used to create the thread. The thread is created as
+		 * "joinable" which means that the thread has to be waited for after
+		 * terminating
 		 */
 		pthread_attr_t _thread_attr;
 };
