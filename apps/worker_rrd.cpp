@@ -109,14 +109,18 @@ void WorkerRrd::obtainValues() {
  */
 void WorkerRrd::stepBeat() {
 	struct timespec timeNow;
+	clock_gettime( CLOCK_REALTIME, &timeNow );
 	// Increase time beat to next measurement point and compare to current
 	// time. Ensure that the next time beat is in the future.
 	_timeBeat.tv_sec += _pollingPeriod;
-	clock_gettime( CLOCK_REALTIME, &timeNow );
-	while( timeNow.tv_sec > _timeBeat.tv_sec ) {
+	if( _timeBeat.tv_sec > timeNow.tv_sec ) return;
+	
+	while( timeNow.tv_sec >= _timeBeat.tv_sec ) {
 		std::clog << "Warning: Update step too long for requested polling period. Skipping time point." << std::endl;
 		_timeBeat.tv_sec += _pollingPeriod;
 	}
+	std::clog << "Warning: Update step too long for requested polling period. Skipping time point." << std::endl;
+	_timeBeat.tv_sec += _pollingPeriod;
 }
 
 /**
@@ -149,16 +153,16 @@ void WorkerRrd::updateRRD() {
 	for( ; i != _chSize; (++i,++val) ) {
 		rrdArg << ':' <<  *val;
 	}
-	
-	// Do the actual update
-	const char* file( _parent.app().programOptions().rrdFile().c_str() );
 	const char* arg( rrdArg.str().c_str() );
-	rrd_clear_error();
-	if( rrd_update_r( file, nullptr, 1, &arg ) ) throw std::runtime_error( rrd_get_error() );
 	
 	// If in verbose debugging mode, output the argument string that was passed to
 	// rrd_update_r. I.e. the string with pattern <timestamp>:<value 1>:....:<value N>
 	if( _parent.app().programOptions().beVerbose() ) std::cerr << "rrd_update: " << arg << std::endl;
+	
+	// Do the actual update
+	const char* file( _parent.app().programOptions().rrdFile().c_str() );
+	rrd_clear_error();
+	if( rrd_update_r( file, nullptr, 1, &arg ) ) throw std::runtime_error( rrd_get_error() );
 }
 
 /**

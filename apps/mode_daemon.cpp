@@ -62,21 +62,28 @@ void ModeDaemon::deviceUpdate() {
 #ifdef DEBUG
 	assert( pthread_equal( pthread_self(), _mutex_owner ) );
 #endif
+	bool verb( _app.programOptions().beVerbose() );
+	
 	// Try "endlessly" until main thread is cancelled
 	while( !isCancelled() ) {
 		try {
 			_dev.updateVolatileValues();
 			return; // if the line above did not throw an exception, it's done
 		} catch( std::runtime_error& e ) {
+			if( verb ) std::cerr << "Connection to device lost" << std::endl;
 			// If update failed, the device probably became unavailable. Disconnect
 			// first to get back into a clean state
 			_dev.disconnect();
 			// Try "endlessly" to connect again until main thread is cancelled
 			while( !isCancelled() ) {
 				try {
+					if( verb ) std::cerr << "Try to reconnect ... " << std::flush;
 					_dev.connect();
+					if( verb ) std::cerr << "success" << std::endl;
 					break; // if the line above did not throw an exception, connection is re-established
-				} catch( std::runtime_error& e ) {}
+				} catch( std::runtime_error& e ) {
+					if( verb ) std::cerr << "failed" << std::endl;
+				}
 			}
 		}
 	}
