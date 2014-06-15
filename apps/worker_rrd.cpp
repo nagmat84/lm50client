@@ -13,6 +13,7 @@ static std::ostream& operator<<( std::ostream& os, const struct timespec& ts ) {
 	gmtime_r( &(ts.tv_sec), &t );
 	assert( 0 <= ts.tv_nsec && ts.tv_nsec < 1000000000 );
 	char fc( os.fill( '0' ) );
+	std locacle loc( os.imbue( std::locale( "C" ) ) );
 	os << '"' << (1900 + t.tm_year) << '-';
 	os << std::setw( 2 ) << t.tm_mon << '-';
 	os << std::setw( 2 ) << t.tm_mday << ' ';
@@ -21,6 +22,7 @@ static std::ostream& operator<<( std::ostream& os, const struct timespec& ts ) {
 	os << std::setw( 2 ) << t.tm_sec << '.';
 	os << std::setw( 9 ) << ts.tv_nsec << "\";";
 	os.fill( fc );
+	os.imbue( loc );
 	return os;
 }
 

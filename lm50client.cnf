@@ -12,9 +12,14 @@ channels = 2
 channels = 12
 channels = 16
 
+
+
+#
+# rrdtool create /tmp/lm50.rrd -s 2 DS:channel01:COUNTER:4:U:U DS:channel02:COUNTER:4:U:U DS:channel12:COUNTER:4:U:U DS:channel16:COUNTER:4:U:U
+#
 [rrd]
 #file = /srv/cacti/rrd/lm50.rrd
-file = /tmp/lm50client.csv
+file = /tmp/lm50.rrd
 period = 2
 
 [report]
