@@ -2,6 +2,7 @@
 .kdev4/
 *.a
 *.cmake
+!cmake/Modules/*.cmake
 CMakeCache.txt
 CMakeFiles/
 lm50client

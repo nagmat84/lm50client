@@ -2,6 +2,9 @@
 #include "lm50client.h"
 #include "core/lm50device.h"
 
+#include <iostream>
+#include <iomanip>
+
 namespace LM50 {
 
 /**

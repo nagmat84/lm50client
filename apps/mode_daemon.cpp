@@ -44,7 +44,7 @@ void ModeDaemon::deviceUpdate() {
 	_dev.updateVolatileValues();
 }
 
-boost::posix_time::ptime ModeDaemon::deviceLastUpdate() {
+const struct timespec& ModeDaemon::deviceLastUpdate() {
 #ifdef DEBUG
 	assert( pthread_equal( pthread_self(), _mutex_owner ) );
 #endif

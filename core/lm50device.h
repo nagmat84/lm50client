@@ -2,8 +2,8 @@
 #define _LM50DEVICE_H_
 
 #include <cstddef>
-#include <sys/types.h>
-#include <boost/date_time.hpp>
+//include <sys/types.h>
+#include <ctime>
 
 #include "lib/modbus.h"
 
@@ -17,6 +17,7 @@ class LM50Device {
 		typedef ModBus::Datagram::UnitID UnitId;
 		typedef ModBus::Datagram::TransactionID TransactionId;
 		typedef size_t ChIdx;
+		typedef unsigned int ChVal;
 		typedef uint16_t HwAddr;
 		typedef uint16_t HwLength;
 	
@@ -46,9 +47,11 @@ class LM50Device {
 		
 		unsigned int serialNumber() const;
 		
-		unsigned int channel( ChIdx ch ) const;
+		ChVal channel( ChIdx ch ) const;
 		
-		const boost::posix_time::ptime& lastUpdate() const { return _lastUpdate; }
+		const ChVal* channels() const { return _channels; }
+		
+		const struct timespec& lastUpdate() const { return _lastUpdate; }
 		
 	protected:
 		/*static HwAddr hwAddrChannel( ChIdx ch ) {
@@ -73,13 +76,13 @@ class LM50Device {
 		static const HwLength _hwLengthChannels;
 		std::string _host;
 		std::string _port;
-		boost::posix_time::ptime _lastUpdate;
+		struct timespec _lastUpdate;
 		ModBus::TcpCommunication _tcpComm;
 		TransactionId _lastRequestId;
 		TransactionId _lastReplyId;
 		std::string _revision;
 		unsigned int _serialNo;
-		unsigned int* _channels;
+		ChVal* _channels;
 };
 
 }

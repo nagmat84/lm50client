@@ -41,26 +41,26 @@ const LM50Device::HwLength LM50Device::_hwLengthChannels( 100 );
 LM50Device::LM50Device() : \
 	_host(), \
 	_port(), \
-	_lastUpdate( not_a_date_time ), \
+	_lastUpdate(), \
 	_tcpComm(), \
 	_lastRequestId(0), \
 	_lastReplyId(0), \
 	_revision(), \
 	_serialNo(0), \
-	_channels( new unsigned int[countChannels] ) {
+	_channels( new ChVal[countChannels] ) {
 	for( ChIdx i( 0 ); i < countChannels; ++i ) _channels[ i ] = 0;
 }
 
 LM50Device::LM50Device( const std::string& h, const std::string& p ) : \
 	_host( h ), \
 	_port( p ), \
-	_lastUpdate( not_a_date_time ), \
+	_lastUpdate(), \
 	_tcpComm(), \
 	_lastRequestId(0), \
 	_lastReplyId(0), \
 	_revision(), \
 	_serialNo(0), \
-	_channels( new unsigned int[countChannels] ) {
+	_channels( new ChVal[countChannels] ) {
 	for( ChIdx i( 0 ); i < countChannels; ++i ) _channels[ i ] = 0;
 }
 
@@ -191,7 +191,7 @@ void LM50Device::updateVolatileValues() {
 	}
 	for( ChIdx j = 0; j < countChannels; j++ ) _channels[j] = chs.value(j);
 	delete ires;
-	_lastUpdate = boost::posix_time::microsec_clock::universal_time();
+	clock_gettime( CLOCK_REALTIME, &_lastUpdate );
 }
 
 /**
@@ -221,8 +221,8 @@ unsigned int LM50Device::serialNumber() const {
  * called yet and the cached value is invalid.
  * @throw range_error Thrown, if parameter ch is out of range
  */
-unsigned int LM50Device::channel( ChIdx ch ) const {
-	if( _lastUpdate.is_not_a_date_time() ) throw runtime_error( "Channel values are not valid. Function \"updateVolatileValues\" has never been called yet or has not been successful" );
+LM50Device::ChVal LM50Device::channel( ChIdx ch ) const {
+	if( _lastUpdate.tv_sec == 0 ) throw runtime_error( "Channel values are not valid. Function \"updateVolatileValues\" has never been called yet or has not been successful" );
 	if( ch >= countChannels ) {
 		ostringstream msg;
 		msg << "Channel index out of range. Index must be between 0 and " << (countChannels-1) << ".";

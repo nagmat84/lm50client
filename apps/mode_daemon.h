@@ -41,7 +41,7 @@ class ModeDaemon : public ProgramMode {
 		 * calls to the device must be secured by a mutex. For the same reason
 		 * this function returns a deep copy.
 		 */
-		boost::posix_time::ptime deviceLastUpdate();
+		const struct timespec& deviceLastUpdate();
 		
 		/**
 		 * Returns the value of the device's channel. N.b.: There is no function
