@@ -7,49 +7,33 @@ host = hekddcga.hek.uni-karlsruhe.de
 mode = daemon
 #workers = rrd report
 workers = rrd
-channels = 1
-channels = 2
-channels = 12
-channels = 16
+channels =  1   # Bicycle shop CEE 1, imp = 800
+channels =  2   # Bicycle shop CEE 2, imp = 800
+channels =  6   # IT room, imp = 800
+channels =  7   # Bar, imp = 1000
+channels = 10   # Main, imp = 10000 (sic!)
+channels = 11   # Basement, imp = 800
+channels = 12   # Heating system, imp = 1000
+channels = 16   # Janitor apartment, imp = 1000
+channels = 17   # Ground floor, imp = 1000
+channels = 21   # 1st floor, imp = 1000
+channels = 22   # 2nd floor, imp = 1000
+channels = 26   # 3rd floor, imp = 1000
+channels = 27   # 4th floor, imp = 1000
+channels = 31   # 5th floor, imp = 1000
+channels = 32   # 6th floor, imp = 1000
+channels = 36   # Meeting hall, imp = 1000
+channels = 37   # Elevator, imp = 1000
+channels = 41   # Family apartment, imp = 1000
+channels = 46   # Laundry room, imp = 1000
+channels = 47   # Ventilation system, imp = 1000
 
-
-
-# RRD file creation
 #
-# A COUNTER value is stored as a derivative with physical dimension "per second"
-# according to RRDtool documentation
+# See README.txt how to create the RRD file
 #
-# The step size is dt = 2s. (This is the resolution of the measurement.)
-#
-# A power distribution box can have a maximum power throughput of
-#   Pmax = 3 x 63A x 400V = 75600W
-#
-# The impulse constant is imp = 1000/kWh (sometimes it is 800/kWh)
-#
-# The maximum number of impulses between two measurements is therefore
-#   Nmax = imp * Pmax * dt
-#
-# The maximum derivate is
-#   dN = Nmax/dt = imp * Pmax = 1000/kWh * 75600W = 75600/h = 756/36 1/s = 21/s
-#
-#
-# rrdtool \
-#     create /tmp/lm50.rrd -s 2 \
-#     DS:channel01:COUNTER:4:0:22 \
-#     DS:channel02:COUNTER:4:0:22 \
-#     DS:channel12:COUNTER:4:0:22 \
-#     DS:channel16:COUNTER:4:0:22 \
-#     RRA:LAST:0.5:1:100
-#
-# RRD file export
-#
-# rrdtool fetch /tmp/lm50.rrd LAST -r 2 -s end-120s
-#
-
 [rrd]
-#file = /srv/cacti/rrd/lm50.rrd
-file = /tmp/lm50.rrd
-period = 2
+file = /srv/cacti/rra/power.rrd
+period = 60
 
 [report]
 #file = /var/cache/lm50client/report
