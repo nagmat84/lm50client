@@ -8,6 +8,10 @@
 
 namespace LM50 {
 
+/**
+ * A little helper function to print a POSIX timespec structure as ISO format
+ * YYYY-MM-DD HH:MM:ss.nanoseconds
+ */
 static std::ostream& operator<<( std::ostream& os, const struct timespec& ts ) {
 	struct tm t;
 	gmtime_r( &(ts.tv_sec), &t );
@@ -26,6 +30,20 @@ static std::ostream& operator<<( std::ostream& os, const struct timespec& ts ) {
 	return os;
 }
 
+/**
+ * C'tor
+ * Most important this function allocates an array to cache the channel values
+ * within this class. The array's size is not chosen to store values of
+ * all possible channels (i.e. 50) but only large enough to store the requested
+ * values.
+ * 
+ * Example: Lets assume the requested channels are 1, 2, 10, 15.
+ * Then _chIdx is a vector of the requestet channel indizes, this means
+ * _chIdx = { 1, 2, 10, 15 }. _chSize = 4, because this is the number of
+ * requested channels. _chValues is an array to hold 4 ChVal values. For example
+ * _chValues = { 1000, 42, 11, 0815 }
+ * 
+ */
 WorkerRrd::WorkerRrd( ModeDaemon &parent ) : DaemonWorker( parent ),\
 	_pollingPeriod( parent.app().programOptions().rrdPeriod() ),
 	_timeBeat(),\
@@ -41,6 +59,9 @@ WorkerRrd::~WorkerRrd() {
 	delete[] _chValues;
 }
 
+/**
+ * The main loop of the thread
+ */
 int WorkerRrd::run() {
 	logHeader();
 	
@@ -62,6 +83,12 @@ int WorkerRrd::run() {
 	return 0;
 }
 
+/**
+ * Locks the device object, requests the device object to update its internal
+ * values from the real physical device and copies the values into this 
+ * object's own variables _timeUpdate and _chValues. The latter is necessary
+ * in order to be able unlock the device object again.
+ */
 void WorkerRrd::obtainValues() {
 	ProgramOptions::ChList::const_iterator i( _chIdx.begin() );
 	LM50Device::ChVal* val( _chValues );
@@ -74,6 +101,12 @@ void WorkerRrd::obtainValues() {
 	_parent.unlockDevice();
 }
 
+/**
+ * Advances the object's _timeBeat variable by the smallest multiple of
+ * _pollingPeriod such that the new _timeBeat value is located in the future.
+ * Normally the step size is supposed to be one times _pollingPeriod. If not
+ * and error is logged.
+ */
 void WorkerRrd::stepBeat() {
 	struct timespec timeNow;
 	// Increase time beat to next measurement point and compare to current
@@ -86,6 +119,9 @@ void WorkerRrd::stepBeat() {
 	}
 }
 
+/**
+ * Blocks until _timeBeat passes by.
+ */
 void WorkerRrd::sleepUntilBeat() const {
 	// Wrap the call to sleep into a loop, because clock_nanosleep might be
 	// interrupted by a signal. If that signal does not need any reaction
@@ -99,30 +135,36 @@ void WorkerRrd::sleepUntilBeat() const {
 	}
 }
 
+/**
+ * Write the object's variables _timeUpdate and _chValues into the RRD file.
+ */
 void WorkerRrd::updateRRD() {
+	// Constructs the argument string for rrd_update_r. The pattern is
+	// <timestamp>:<value 1>:....:<value N>
 	std::ostringstream rrdArg;
 	rrdArg.imbue( std::locale( "C" ) );
 	rrdArg << (_timeUpdate.tv_nsec < 500000000l ? _timeUpdate.tv_sec : _timeUpdate.tv_sec+1l );
-	
 	LM50Device::ChIdx i(0);
 	LM50Device::ChVal* val( _chValues );
 	for( ; i != _chSize; (++i,++val) ) {
 		rrdArg << ':' <<  *val;
 	}
 	
+	// Do the actual update
 	const char* file( _parent.app().programOptions().rrdFile().c_str() );
 	const char* arg( rrdArg.str().c_str() );
-	
 	rrd_clear_error();
-	if( rrd_update_r( file, nullptr, 1, &arg ) ) {
-		throw std::runtime_error( rrd_get_error() );
-	}
+	if( rrd_update_r( file, nullptr, 1, &arg ) ) throw std::runtime_error( rrd_get_error() );
 	
-	if( _parent.app().programOptions().beVerbose() ) {
-		std::cerr << "rrd_update: " << arg << std::endl;
-	}
+	// If in verbose debugging mode, output the argument string that was passed to
+	// rrd_update_r. I.e. the string with pattern <timestamp>:<value 1>:....:<value N>
+	if( _parent.app().programOptions().beVerbose() ) std::cerr << "rrd_update: " << arg << std::endl;
 }
 
+/**
+ * Write a csv-like header to standard error. Does not do anything, if not in
+ * verbose debugging mode
+ */
 void WorkerRrd::logHeader() const {
 	if( !_parent.app().programOptions().stayInForeground() ) return;
 	// Print header in CSV file. A 32bit integer has at most 10 digets, hence
@@ -138,6 +180,10 @@ void WorkerRrd::logHeader() const {
 	std::cerr << std::setfill( ' ' ) << std::endl;
 }
 
+/**
+ * Write a csv-like line to standard error. Does not do anything, if not in
+ * verbose debugging mode
+ */
 void WorkerRrd::logValues() const {
 	if( !_parent.app().programOptions().stayInForeground() ) return;
 	LM50Device::ChIdx i(0);
