@@ -50,12 +50,23 @@ class ModeDaemon : public ProgramMode {
 		 */
 		unsigned int deviceChannel( LM50Device::ChIdx ch );
 		
+		
+		bool isCancelled() const { return _isCancelled; }
+		
 	protected:
 		bool daemonize();
 		void init();
 		void deinit();
 		
 	protected:
+		/**
+		 * True by default. Set to false by start(). N.b.: This is not the
+		 * direct opposite of _isRunning. A thread can still be running though
+		 * already being cancelled during it's end of life while it is on the verge
+		 * of terminating.
+		 */
+		bool _isCancelled;
+		
 		LM50Device _dev;
 		
 		/**

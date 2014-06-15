@@ -7,6 +7,7 @@ namespace LM50 {
 
 ModeDaemon::ModeDaemon( const LM50ClientApp& app ) : \
 	ProgramMode( app ), \
+	_isCancelled( true ), \
 	_dev( app.programOptions().host(), app.programOptions().port() ), \
 	_mutex(), \
 	_mutex_attr(), \
@@ -37,11 +38,48 @@ void ModeDaemon::unlockDevice() {
 	pthread_mutex_unlock( &_mutex );
 }
 
+/**
+ * Requests the device object to update its internal attributes with the
+ * values from the real physical device.
+ * 
+ * If a runtime_error is catched this is most likely due a time out. Probabbly
+ * the physical device became unavailable. This function tries to reconnect
+ * in an endless loop but keeps the device mutex locked. Please note:
+ * 
+ * (1) This function is executed in the context of the calling thread. Hence,
+ *     the main thread is still actively waiting for an termination signal
+ *     at ModeDaemon::run() by sigwait. Though this function runs "endlessly"
+ *     until the device is reconnected a proper termination is still being
+ *     guaranteed.
+ * (2) As the mutex is kept locked any child thread that tries to access the
+ *     device will go to sleep eventually. This make sense because these other
+ *     child threads cannot do anything anyway, if the device is not available.
+ *     As soon as the device becomes available again, the calling thread of
+ *     this function will continue, unlock the mutex and all other child threads
+ *     will be waked up again, too.
+ */
 void ModeDaemon::deviceUpdate() {
 #ifdef DEBUG
 	assert( pthread_equal( pthread_self(), _mutex_owner ) );
 #endif
-	_dev.updateVolatileValues();
+	// Try "endlessly" until main thread is cancelled
+	while( !isCancelled() ) {
+		try {
+			_dev.updateVolatileValues();
+			return; // if the line above did not throw an exception, it's done
+		} catch( std::runtime_error& e ) {
+			// If update failed, the device probably became unavailable. Disconnect
+			// first to get back into a clean state
+			_dev.disconnect();
+			// Try "endlessly" to connect again until main thread is cancelled
+			while( !isCancelled() ) {
+				try {
+					_dev.connect();
+					break; // if the line above did not throw an exception, connection is re-established
+				} catch( std::runtime_error& e ) {}
+			}
+		}
+	}
 }
 
 const struct timespec& ModeDaemon::deviceLastUpdate() {
@@ -131,6 +169,7 @@ void ModeDaemon::deinit() {
 void ModeDaemon::run() {
 	init();
 	if( !daemonize() ) return;
+	_isCancelled = false;
 	
 	// Ensure that all signals are blocked such that this threat can synchronously
 	// wait for any termination signal later.
@@ -155,6 +194,7 @@ void ModeDaemon::run() {
 	err = sigwait( &termSig, &sigNo );
 	
 	// After a signal arrived terminate enabled workers and deinit.
+	_isCancelled = true;
 	if( _app.programOptions().rrdEnabled() ) workerRrd.terminate();
 	deinit();
 	
