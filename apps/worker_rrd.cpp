@@ -63,6 +63,7 @@ WorkerRrd::~WorkerRrd() {
  * The main loop of the thread
  */
 int WorkerRrd::run() {
+	rrd_get_context();
 	logHeader();
 	
 	// Get time point of first beat, i.e. the next multiple of _pollingPeriod from now on
@@ -153,16 +154,26 @@ void WorkerRrd::updateRRD() {
 	for( ; i != _chSize; (++i,++val) ) {
 		rrdArg << ':' <<  *val;
 	}
-	const char* arg( rrdArg.str().c_str() );
+	
+	// ATTENTION: A line as simple as
+	//   const char* argv[2] = { rrdArg.str().c_str(), nullptr };
+	// is invalid although it looks beautiful. rrdArg.str() returns a
+	// new (!) string object and not a const reference to its internal string.
+	// Hence rrdArg.str().c_str() returns a pointer to the internal C char array
+	// but this will be freed immediately because str() is only temporary.
+	// Hence we need to lines:
+	std::string arg( rrdArg.str() );                // Save a copy on stack
+	const char* argv[2] = { arg.c_str(), nullptr }; // Point to C-array safely
 	
 	// If in verbose debugging mode, output the argument string that was passed to
 	// rrd_update_r. I.e. the string with pattern <timestamp>:<value 1>:....:<value N>
-	if( _parent.app().programOptions().beVerbose() ) std::cerr << "rrd_update: " << arg << std::endl;
+	if( _parent.app().programOptions().beVerbose() ) std::cerr << "rrd_update: " << argv[0] << std::endl;
 	
 	// Do the actual update
 	const char* file( _parent.app().programOptions().rrdFile().c_str() );
 	rrd_clear_error();
-	if( rrd_update_r( file, nullptr, 1, &arg ) ) throw std::runtime_error( rrd_get_error() );
+	int rrd_res( rrd_update_r( file, nullptr, 1, argv ) );
+	if( rrd_res ) throw std::runtime_error( rrd_get_error() );
 }
 
 /**

@@ -1,7 +1,7 @@
 find_path( RRDTool_INCLUDE_DIR rrd.h /usr/include /usr/local/include )
 if( RRDTool_INCLUDE_DIR )
 	set( RRDTool_FOUND TRUE CACHE INTERNAL "" FORCE )
-	set( RRDTool_LDFLAGS "-lrrd" CACHE INTERNAL "" FORCE )
+	set( RRDTool_LDFLAGS "-lrrd_th" CACHE INTERNAL "" FORCE )
 else()
 	set( RRDTool_FOUND FALSE CACHE INTERNAL "" FORCE )
 	unset( RRDTool_LDFLAGS CACHE )

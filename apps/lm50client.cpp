@@ -1,11 +1,13 @@
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <vector>
 #include "lm50client.h"
 #include "mode_human.h"
 #include "mode_cacti.h"
 #include "mode_daemon.h"
+
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <vector>
+#include <clocale>
 
 namespace LM50 {
 
@@ -37,6 +39,7 @@ void LM50ClientApp::destroy() const {
 }
 
 void LM50ClientApp::init() {
+	setlocale( LC_ALL, "" ); // old C locale
 	std::locale loc( "" );
 	std::locale::global( loc );
 	std::cout.imbue( loc );

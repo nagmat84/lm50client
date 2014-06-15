@@ -1,0 +1,138 @@
+Index: rrdtool-1.4.8/src/rrd_create.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_create.c	2014-06-15 23:11:53.143332854 +0200
++++ rrdtool-1.4.8/src/rrd_create.c	2014-06-15 23:15:25.152700210 +0200
+@@ -595,8 +595,7 @@
+        &(rrd -> ds_def[ds_idx].par[DS_mrhb_cnt].u_cnt),
+        minstr,maxstr);
+      */
+-    old_locale = setlocale(LC_NUMERIC, NULL);
+-    setlocale(LC_NUMERIC, "C");
++    old_locale = setlocale(LC_NUMERIC, "C");
+     if (sscanf(def, "%lu:%18[^:]:%18[^:]",
+                &(rrd->ds_def[ds_idx].par[DS_mrhb_cnt].u_cnt),
+                minstr, maxstr) == 3) {
+Index: rrdtool-1.4.8/src/rrd_dump.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_dump.c	2013-05-23 09:55:07.000000000 +0200
++++ rrdtool-1.4.8/src/rrd_dump.c	2014-06-15 23:16:12.929008536 +0200
+@@ -103,9 +103,7 @@
+         return (-1);
+     }
+ 
+-    old_locale = setlocale(LC_NUMERIC, NULL);
+-    setlocale(LC_NUMERIC, "C");
+-
++    old_locale = setlocale(LC_NUMERIC, "C");
+ 
+     if (opt_header == 1) {
+         CB_PUTS("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+Index: rrdtool-1.4.8/src/rrd_graph.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_graph.c	2014-06-15 23:11:53.287333785 +0200
++++ rrdtool-1.4.8/src/rrd_graph.c	2014-06-15 23:16:56.405289161 +0200
+@@ -4012,8 +4012,7 @@
+     rrd_graph_init(&im);
+     size_t graphfile_len;
+     /* a dummy surface so that we can measure text sizes for placements */
+-    old_locale = setlocale(LC_NUMERIC, NULL);
+-    setlocale(LC_NUMERIC, "C");
++    old_locale = setlocale(LC_NUMERIC, "C");
+     rrd_graph_options(argc, argv, &im);
+     if (rrd_test_error()) {
+         rrd_info_free(im.grinfo);
+Index: rrdtool-1.4.8/src/rrd_rpncalc.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_rpncalc.c	2013-05-23 09:55:07.000000000 +0200
++++ rrdtool-1.4.8/src/rrd_rpncalc.c	2014-06-15 23:18:59.782070368 +0200
+@@ -299,8 +299,7 @@
+     char      vname[MAX_VNAME_LEN + 10];
+     char     *old_locale;
+ 
+-    old_locale = setlocale(LC_NUMERIC, NULL);
+-    setlocale(LC_NUMERIC, "C");
++    old_locale = setlocale(LC_NUMERIC, "C");
+ 
+     rpnp = NULL;
+     expr = (char *) expr_const;
+Index: rrdtool-1.4.8/src/rrd_tool.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_tool.c	2014-06-15 23:11:53.263333630 +0200
+@@ -732,8 +732,7 @@
+         if (rrd_xport
+             (argc - 1, &argv[1], &xxsize, &start, &end, &step, &col_cnt,
+              &legend_v, &data) == 0) {
+-            char *old_locale = setlocale(LC_NUMERIC,NULL);
+-            setlocale(LC_NUMERIC, "C");
++            char *old_locale = setlocale(LC_NUMERIC, "C");
+             row_cnt = (end - start) / step;
+             ptr = data;
+             if (json == 0){
+Index: rrdtool-1.4.8/src/rrd_tune.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_tune.c	2013-05-23 09:55:07.000000000 +0200
++++ rrdtool-1.4.8/src/rrd_tune.c	2014-06-15 23:22:35.135433546 +0200
+@@ -126,8 +126,7 @@
+         optcnt++;
+         switch (opt) {
+         case 'h':
+-            old_locale = setlocale(LC_NUMERIC, NULL);
+-            setlocale(LC_NUMERIC, "C");
++            old_locale = setlocale(LC_NUMERIC, "C");
+             if ((matches =
+                  sscanf(optarg, DS_NAM_FMT ":%ld", ds_nam,
+                         &heartbeat)) != 2) {
+@@ -147,8 +146,7 @@
+             break;
+ 
+         case 'i':
+-            old_locale = setlocale(LC_NUMERIC, NULL);
+-            setlocale(LC_NUMERIC, "C");
++            old_locale = setlocale(LC_NUMERIC, "C");
+             if ((matches =
+                  sscanf(optarg, DS_NAM_FMT ":%lf", ds_nam, &min)) < 1) {
+                 rrd_set_error("invalid arguments for minimum ds value");
+@@ -170,8 +168,7 @@
+             break;
+ 
+         case 'a':
+-            old_locale = setlocale(LC_NUMERIC, NULL);
+-            setlocale(LC_NUMERIC, "C");
++            old_locale = setlocale(LC_NUMERIC, "C");
+             if ((matches =
+                  sscanf(optarg, DS_NAM_FMT ":%lf", ds_nam, &max)) < 1) {
+                 rrd_set_error("invalid arguments for maximum ds value");
+Index: rrdtool-1.4.8/src/rrd_update.c
+===================================================================
+--- rrdtool-1.4.8.orig/src/rrd_update.c	2013-05-23 09:55:07.000000000 +0200
++++ rrdtool-1.4.8/src/rrd_update.c	2014-06-15 23:23:35.623816879 +0200
+@@ -970,8 +970,7 @@
+         *current_time = tmp_time.tv_sec;
+         *current_time_usec = tmp_time.tv_usec;
+     } else {
+-        old_locale = setlocale(LC_NUMERIC, NULL);
+-        setlocale(LC_NUMERIC, "C");
++        old_locale = setlocale(LC_NUMERIC, "C");
+         errno = 0;
+         tmp = strtod(updvals[0], 0);
+         if (errno > 0) {
+@@ -1083,8 +1082,7 @@
+                 }
+                 break;
+             case DST_ABSOLUTE:
+-                old_locale = setlocale(LC_NUMERIC, NULL);
+-                setlocale(LC_NUMERIC, "C");
++                old_locale = setlocale(LC_NUMERIC, "C");
+                 errno = 0;
+                 pdp_new[ds_idx] = strtod(updvals[ds_idx + 1], &endptr);
+                 if (errno > 0) {
+@@ -1102,8 +1100,7 @@
+                 rate = pdp_new[ds_idx] / interval;
+                 break;
+             case DST_GAUGE:
+-                old_locale = setlocale(LC_NUMERIC, NULL);
+-                setlocale(LC_NUMERIC, "C");
++                old_locale = setlocale(LC_NUMERIC, "C");
+                 errno = 0;
+                 pdp_new[ds_idx] =
+                     strtod(updvals[ds_idx + 1], &endptr) * interval;

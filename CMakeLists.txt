@@ -21,7 +21,7 @@ message( "RRDTool library found: ${RRDTool_FOUND}" )
 message( "RRDTool include dir is: ${RRDTool_INCLUDE_DIR}" )
 
 IF( NOT CMAKE_BUILD_TYPE )
-  SET( CMAKE_BUILD_TYPE "Debug" )
+  SET( CMAKE_BUILD_TYPE "Release" )
 ENDIF()
 
 SET( CMAKE_CXX_FLAGS "-pedantic -Wextra -Wall -Wno-c++0x-compat" )

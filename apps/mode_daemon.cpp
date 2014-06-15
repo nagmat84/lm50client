@@ -2,9 +2,11 @@
 #include "lm50client.h"
 #include "worker_rrd.h"
 #include <unistd.h>
+#include <iostream>
 
 namespace LM50 {
 
+#ifdef DEBUG
 ModeDaemon::ModeDaemon( const LM50ClientApp& app ) : \
 	ProgramMode( app ), \
 	_isCancelled( true ), \
@@ -12,6 +14,14 @@ ModeDaemon::ModeDaemon( const LM50ClientApp& app ) : \
 	_mutex(), \
 	_mutex_attr(), \
 	_mutex_owner() {
+#else
+ModeDaemon::ModeDaemon( const LM50ClientApp& app ) : \
+	ProgramMode( app ), \
+	_isCancelled( true ), \
+	_dev( app.programOptions().host(), app.programOptions().port() ), \
+	_mutex(), \
+	_mutex_attr() {
+#endif
 	assert( pthread_mutexattr_init( &_mutex_attr ) == 0 );
 	assert( pthread_mutexattr_setprotocol( &_mutex_attr, PTHREAD_PRIO_INHERIT ) == 0 );
 	assert( pthread_mutexattr_settype( &_mutex_attr, PTHREAD_MUTEX_RECURSIVE ) == 0 );

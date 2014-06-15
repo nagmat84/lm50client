@@ -48,8 +48,10 @@ int DaemonWorker::terminate() {
 	// blocking function the thread might be in.
 	// The error ESRCH means that "_thread" is not valid. Might happen if the
 	// thread has already terminated. Ignore silently.
+#ifdef DEBUG
 	int res( pthread_kill( _thread, SIGRTMAX ) );
 	assert( res == 0 || res == ESRCH );
+#endif
 	
 	// Join the thread
 	int status( -1 );

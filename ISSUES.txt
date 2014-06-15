@@ -1,0 +1,9 @@
+* The rrdlib has a severe memory corruption bug. See here
+  http://oss.oetiker.ch/rrdtool/forum.en.html#nabble-f937053
+  and here
+  https://github.com/oetiker/rrdtool-1.x/issues/504
+  and here
+  [insert debian bug link here]
+  and in
+  ./patches/rrdtool
+
