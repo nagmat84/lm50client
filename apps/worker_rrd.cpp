@@ -117,6 +117,10 @@ void WorkerRrd::updateRRD() {
 	if( rrd_update_r( file, nullptr, 1, &arg ) ) {
 		throw std::runtime_error( rrd_get_error() );
 	}
+	
+	if( _parent.app().programOptions().beVerbose() ) {
+		std::cerr << "rrd_update: " << arg << std::endl;
+	}
 }
 
 void WorkerRrd::logHeader() const {
