@@ -5,5 +5,5 @@
 !cmake/Modules/*.cmake
 CMakeCache.txt
 CMakeFiles/
-lm50client
+/lm50client
 Makefile
